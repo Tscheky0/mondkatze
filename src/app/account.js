@@ -62,7 +62,7 @@ const ACC = (() => {
 
   // ----- Cloud-Spielstand -----
   async function push() { await db(`users/${user.uid}/save`, 'PUT', { ts: save.ts || Date.now(), data: save }); CLOUD.status = '☁️ Konto gespeichert ' + new Date().toLocaleTimeString(); }
-  async function pull() { const r = await db(`users/${user.uid}/save`, 'GET'); if (!r || !r.data) return null; if (!CLOUD.validSave(r.data)) throw new Error('Der Cloud-Spielstand ist beschädigt.'); return r; }
+  async function pull() { const r = await db(`users/${user.uid}/save`, 'GET'); if (!r || !r.data) return null; r.data = CLOUD.normalize(r.data); if (!CLOUD.validSave(r.data)) throw new Error('Der Cloud-Spielstand ist beschädigt.'); return r; }
   function touch() { if (!user || window.ADMIN) return; clearTimeout(timer); timer = setTimeout(() => push().catch(e => { CLOUD.status = '⚠️ ' + e.message; }), 4000); }
   async function boot() { // beim Start: gemerkte Anmeldung wiederherstellen und neueren Cloud-Stand anbieten
     const s = rd(LS); if (!s.refresh || !ready() || window.ADMIN) return;

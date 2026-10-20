@@ -2,4 +2,4 @@
 // apiKey: Firebase-Konsole -> Projekteinstellungen -> Allgemein -> Web-API-Schluessel (ist oeffentlich, kein Geheimnis).
 // url: Realtime Database URL, z.B. https://dein-projekt-default-rtdb.europe-west1.firebasedatabase.app
 // Leer lassen = Konten und Online-Koop sind aus. Spieler koennen beides auch in den Einstellungen eintragen.
-window.MK_FIREBASE = { apiKey: '', url: '' };
+window.MK_FIREBASE = { apiKey: 'AIzaSyD0iSKljAJQrDORqHPQTt9GJHYF_idTvWo', url: 'https://mondkatze-spiel-ako06-default-rtdb.europe-west1.firebasedatabase.app' };

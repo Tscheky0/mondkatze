@@ -8,6 +8,17 @@ const CLOUD = {
     const a = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789', r = crypto.getRandomValues(new Uint8Array(12));
     return Array.from(r, v => a[v % a.length]).join('').replace(/(.{4})(?=.)/g, '$1-');
   },
+  // Firebase speichert keine leeren Listen/Objekte und macht aus Listen mit Luecken Objekte: beim Laden wieder auffuellen
+  normalize(o) {
+    if (!o || typeof o !== 'object') return o;
+    const arr = v => Array.isArray(v) ? v : v && typeof v === 'object' ? Object.keys(v).sort((a, b) => a - b).map(k => v[k]) : [], r = Object.assign(defSave(), o);
+    r.prog = arr(o.prog); while (r.prog.length < W.length) r.prog.push(0); r.load = arr(o.load);
+    for (const k of ['skills', 'own', 'moons', 'cleared', 'cons', 'seen', 'bells', 'tips', 'ach', 'best', 'rank', 'daily']) if (!r[k] || typeof r[k] !== 'object') r[k] = {};
+    r.stats = Object.assign(defSave().stats, o.stats || {}); if (!r.stats.kills) r.stats.kills = {};
+    r.cos = { own: (o.cos && o.cos.own) || {}, eq: (o.cos && o.cos.eq) || {} }; r.chars = Object.assign(defSave().chars, o.chars || {});
+    if (r.editor) { r.editor.objs = arr(r.editor.objs); r.editor.en = arr(r.editor.en); r.editor.g = arr(r.editor.g); }
+    return r;
+  },
   validSave(o) {
     return o && typeof o === 'object' && Array.isArray(o.prog) && o.prog.length >= 6 && o.prog.length <= 12 && o.prog.every(n => Number.isInteger(n) && n >= 0 && n < 40)
       && Number.isFinite(o.shards) && Number.isFinite(o.coins) && o.skills && typeof o.skills === 'object' && o.own && typeof o.own === 'object' && Array.isArray(o.load);
@@ -39,6 +50,7 @@ const CLOUD = {
   async push() { await CLOUD.req('PUT', { ts: save.ts || Date.now(), data: save }); CLOUD.status = '☁️ Gespeichert ' + new Date().toLocaleTimeString(); },
   async pull() {
     const r = await CLOUD.req('GET'); if (!r || !r.data) throw new Error('In der Cloud gibt es unter diesem Code noch keinen Spielstand.');
+    r.data = CLOUD.normalize(r.data);
     if (!CLOUD.validSave(r.data)) throw new Error('Der Cloud-Spielstand ist beschädigt.');
     return r;
   },
