@@ -2,7 +2,7 @@
 // Einstellungen (Lautstaerke, Vibration, Touch-Layout, Energiesparen) liegen in PREFS.
 const PREFS = Object.assign({ music: .7, sfx: .8, vib: true, btn: 1, lefty: false, saver: false },
   (() => { try { return JSON.parse(localStorage.getItem('mk_prefs')) || {}; } catch (e) { return {}; } })());
-const vib = ms => { if (PREFS.vib && navigator.vibrate) { try { navigator.vibrate(ms); } catch (e) { } } };
+const vib = ms => { if (PREFS.vib && window.GP) GP.rumble(ms); if (PREFS.vib && navigator.vibrate) { try { navigator.vibrate(ms); } catch (e) { } } };
 
 const AUDIO = (() => {
   let ctx = null, master, mus, sfxg, comp, timer = 0, nextT = 0, step = 0, seq = null, key = '', duck = 1;

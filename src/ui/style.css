@@ -155,6 +155,7 @@ input[type=range]{width:100%;accent-color:var(--moon)}
 #tc.lefty #bd{right:auto;left:calc(14px + 196px*var(--bs))}
 #tc.lefty #bu{left:auto;right:calc(14px + 49px*var(--bs))}
 
+html.gp #tc b{opacity:.3}
 html.lowfx *{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 @media (max-height:480px){.title{margin-top:0;padding:14px}.title h1{font-size:36px}}
