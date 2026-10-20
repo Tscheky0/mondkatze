@@ -15,7 +15,7 @@ const selPal = () => PAL[(typeof save !== 'undefined' && save.chars && save.char
 function drawCat(c, x, y, s, face, t, o, pal) {
   o = o || {}; pal = pal || PAL.luna; face = face || 1;
   let eq = null;
-  if (pal.k === 'luna' && !o.nolook && typeof save !== 'undefined' && save.cos) { eq = save.cos.eq; const cc = eq.color && COS.find(x => x.id === eq.color); if (cc) pal = { ...pal, body: cc.c, edge: cc.edge, patch: null }; }
+  if ((pal.k === 'luna' || o.cos) && !o.nolook && typeof save !== 'undefined' && save.cos) { eq = save.cos.eq; const cc = pal.k === 'luna' && eq.color && COS.find(x => x.id === eq.color); if (cc) pal = { ...pal, body: cc.c, edge: cc.edge, patch: null }; }
   c.save(); c.translate(x, y); c.scale(face * s / 40, s / 40);
   const run = o.run, air = o.air, sw = Math.sin(t * .7), l = run ? Math.sin(t * 1.6) * 5 : 0;
   if (run) c.translate(0, -Math.abs(Math.sin(t * 1.6)) * 1.8);

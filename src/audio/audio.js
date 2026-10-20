@@ -1,6 +1,6 @@
 // Prozeduraler Sound: Effekte und Musik per WebAudio, keine Audio-Dateien.
 // Einstellungen (Lautstaerke, Vibration, Touch-Layout, Energiesparen) liegen in PREFS.
-const PREFS = Object.assign({ music: .7, sfx: .8, vib: true, btn: 1, lefty: false, saver: false },
+const PREFS = Object.assign({ music: .7, sfx: .8, vib: true, btn: 1, lefty: false, saver: false, retro: false },
   (() => { try { return JSON.parse(localStorage.getItem('mk_prefs')) || {}; } catch (e) { return {}; } })());
 const vib = ms => { if (PREFS.vib && window.GP) GP.rumble(ms); if (PREFS.vib && navigator.vibrate) { try { navigator.vibrate(ms); } catch (e) { } } };
 
@@ -136,6 +136,7 @@ const AUDIO = (() => {
     if (kind === 'piano') noise(.03, { vol: v * .25, fq: 2500, at: t - ctx.currentTime, dest: o && o.dest || mbus });
   }
   function padV(ms, t, d, v, kind) {
+    if (PREFS.retro) return;
     for (const m of ms) {
       const f = mid(m), g = ctx.createGain(), fl = ctx.createBiquadFilter(), a = Math.min(.5, d * .35);
       fl.type = 'lowpass'; fl.frequency.value = kind === 'drone' ? 700 : 1500; fl.Q.value = .4;
@@ -168,6 +169,7 @@ const AUDIO = (() => {
     s.connect(fl); fl.connect(g); out(g); s.start(t); s.stop(t + d + .03);
   }
   function bassV(m, t, d, v, kind) {
+    if (PREFS.retro) return osc(mid(m), Math.max(.08, d), { type: 'triangle', vol: v * .8, dest: mbus, at: t - ctx.currentTime, attack: .004 });
     if (kind === 'pluck') return pluckV(m, t, v * 1.4, { kind: 'bass', len: Math.max(.5, d * 1.6), cut: 1400, cut2: 300 });
     const s = ctx.createOscillator(), g = ctx.createGain(), fl = ctx.createBiquadFilter(); s.type = kind === 'saw' ? 'sawtooth' : 'sine'; s.frequency.value = mid(m);
     fl.type = 'lowpass'; fl.frequency.setValueAtTime(kind === 'saw' ? 900 : 400, t); fl.frequency.exponentialRampToValueAtTime(220, t + d);
@@ -182,6 +184,7 @@ const AUDIO = (() => {
   const timp = (t, v) => { osc(98, .8, { type: 'sine', vol: v, slide: 72, dest: dbus, at: t - ctx.currentTime }); noise(.08, { vol: v * .35, fq: 300, dest: dbus, at: t - ctx.currentTime }); };
 
   function note(kind, m, t, d, v) {
+    if (PREFS.retro) { osc(mid(m), Math.max(.07, Math.min(d, .5)), { type: kind === 'brass' ? 'sawtooth' : kind === 'bell' || kind === 'flute' ? 'triangle' : 'square', vol: v * .5, dest: mbus, at: t - ctx.currentTime, attack: .004 }); return; }
     if (kind === 'guitar' || kind === 'oud' || kind === 'harp') pluckV(m, t, v, { kind, len: kind === 'oud' ? .9 : 1.5, cut: kind === 'oud' ? 6500 : 4800 });
     else if (kind === 'marimba' || kind === 'bell' || kind === 'piano') addV(kind, m, t, d, v);
     else if (kind === 'brass') brassV(m, t, d, v); else if (kind === 'flute') fluteV(m, t, d, v); else if (kind === 'stab') stabV(m, t, Math.min(d, .16), v);

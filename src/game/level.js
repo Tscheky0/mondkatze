@@ -121,6 +121,20 @@ function genLevel(wi, li, seed) {
     if (mods.includes('movers')) for (let k = 0; k < 3 && roomy.length; k++) { const s = pick(roomy); movers.push({ cx: (s.x0 + s.x1) / 2 * TS, y0: (s.y - 4) * TS, ax: 0, ay: 56, w: 80, h: 12, sp: 1.2 + r() * .5, ph: r() * 6, x: 0, y: 0, dx: 0, dy: 0 }); }
   }
   if (mods.includes('fireballs')) for (const gp of gaps) if (r() < .85) fire.push({ x: (gp.x0 + gp.x1) / 2 * TS, ph: r() * 3, per: 2.4 + r() * 1.2, hh: 170 + r() * 60 });
+  // Raetsel: Ein Schlosstor sperrt den Weg, der Schluessel liegt auf einer Plattform weiter vorn
+  let gate = null, keyPos = null;
+  if (li >= 2 && st !== 'sky' && st !== 'cave' && cols >= 90 && r() < .5) {
+    const gc = spots.filter(q => q.x0 > 40 && q.x1 < cols - 30 && q.x1 - q.x0 >= 7 && !doors.some(d => d.x / TS > q.x0 - 2 && d.x / TS < q.x1 + 2));
+    const gs = gc.length ? gc[Math.floor(r() * gc.length)] : null;
+    const kc = gs ? spots.filter(q => q.x1 < gs.x0 - 6 && q.x0 > 14 && q.x1 - q.x0 >= 7 && q.y > 5) : [];
+    if (gs && kc.length) {
+      const ks = kc[kc.length - 1 - Math.floor(r() * Math.min(2, kc.length))], gx = gs.x0 + 3 + Math.floor(r() * Math.max(1, gs.x1 - gs.x0 - 6));
+      for (let y = 0; y < gs.y; y++) if (!g[y][gx] || g[y][gx] === 2) g[y][gx] = 7;
+      const kx = ks.x0 + 2 + Math.floor(r() * Math.max(1, ks.x1 - ks.x0 - 6));
+      for (let c = kx; c < kx + 3; c++) if (!g[ks.y - 3][c]) g[ks.y - 3][c] = 3;
+      gate = { tx: gx, y1: gs.y, open: false }; keyPos = { x: (kx + 1) * TS + 16, y: (ks.y - 3) * TS - 24 };
+    }
+  }
   // Checkpoint-Laternen etwa alle 45 Spalten auf ebenem Boden
   const cps = [];
   for (let x2 = 38; x2 < cols - 22; x2 += 42 + Math.floor(r() * 8)) {
@@ -129,7 +143,7 @@ function genLevel(wi, li, seed) {
     if (g[s2.y - 1][cx] || g[s2.y - 1][cx + 1] || cps.some(c => Math.abs(c.tx - cx) < 22)) continue;
     cps.push({ tx: cx, x: cx * TS + 16, y: s2.y * TS, on: false });
   }
-  return { g, cols, spots, gaps, sp, springs, movers, fire, doors, cps, moonPos: moon, flagX: (cols - 5) * TS, flagY: spots[spots.length - 1].y * TS };
+  return { g, cols, spots, gaps, sp, springs, movers, fire, doors, cps, gate, keyPos, moonPos: moon, flagX: (cols - 5) * TS, flagY: spots[spots.length - 1].y * TS };
 }
 
 
@@ -176,7 +190,7 @@ class Run {
     opts = opts || {};
     this.wi = wi; this.li = li; this.S = S; this.end = end; this.Wd = W[wi];
     Object.assign(this, genLevel(wi, li, opts.seed));
-    this.ice = this.sp.mods.includes('ice'); this.lowg = this.sp.mods.includes('lowgrav'); this.wx = this.sp.weather; this.wind = this.sp.wind || (this.wx === 'sand' ? (this.sp.ph > 3 ? 1 : -1) * 55 : 0); this.hits = 0; this.maxCombo = 0;
+    this.ice = this.sp.mods.includes('ice'); this.lowg = this.sp.mods.includes('lowgrav'); this.wx = this.sp.weather; this.wind = this.sp.wind || (this.wx === 'sand' ? (this.sp.ph > 3 ? 1 : -1) * 55 : 0); this.hits = 0; this.maxCombo = 0; this.keyN = 0; this.gateHint = -9;
     this.rec = []; this.recT = 0; this.kills = {}; this.race = !!opts.race; this.ghost = this.race ? loadGhost(wi, li) : null; this.par = this.cols * TS / 150;
     this.t = 0; this.animT = 0; this.pan = 2.8; this.time = 45 + this.cols * .35 + S.time;
     this.shards = 0; this.coins = 0; this.moon = false; this.chest = null; this.done = false;
@@ -196,7 +210,7 @@ class Run {
       this.players.forEach((q, i) => { q.x = cx + i * 18; q.y = rs.cpY - 30; q.safe = { x: q.x, y: q.y }; });
       this.time = Math.max(30, rs.cpTime) + 8; for (const c of this.cps) if (c.x <= cx) c.on = true;
       this.cpX = cx; this.cpY = rs.cpY; this.cpTime = this.time; this.pan = 0; this.cam = clamp(cx - VW * .4, 0, this.cols * TS - VW);
-      this.pick = this.pick.filter(k => k.x > cx); this.ent = this.ent.filter(e => e.x > cx + 220);
+      this.pick = this.pick.filter(k => k.x > cx || k.k === 'K'); this.ent = this.ent.filter(e => e.x > cx + 220);
     }
   }
 
@@ -228,12 +242,13 @@ class Run {
     }
     for (const m of this.movers) for (let i = 0; i < 2; i++) this.pick.push({ k: 'o', x: m.cx - 14 + i * 28, y: m.y0 - 50 - m.ay });
     if (this.moonPos) this.pick.push({ k: 'm', x: this.moonPos.x, y: this.moonPos.y });
+    if (this.keyPos) this.pick.push({ k: 'K', x: this.keyPos.x, y: this.keyPos.y });
     if (this.li === 4 && !(save.bells || {})[this.wi] && ok.length) { const s = pick(ok); this.pick.push({ k: 'b', x: (s.x0 + s.x1) / 2 * TS, y: s.y * TS - 20 }); }
     const cs = this.spots.filter(s => s.x0 > 8 && s.x1 - s.x0 >= 5);
     if (cs.length && Math.random() < .5) { const s = pick(cs); this.pick.push({ k: 'c', x: (s.x0 + 2 + Math.random() * (s.x1 - s.x0 - 3)) * TS, y: s.y * TS - 16 }); }
   }
 
-  solid(tx, ty) { if (tx < 0 || tx >= this.cols) return true; if (ty < 0 || ty >= ROWS) return false; const v = this.g[ty][tx]; return v === 1 || v === 3 || v === 5 || v === 6; }
+  solid(tx, ty) { if (tx < 0 || tx >= this.cols) return true; if (ty < 0 || ty >= ROWS) return false; const v = this.g[ty][tx]; return v === 1 || v === 3 || v === 5 || v === 6 || v === 7; }
 
   collide(e, dt) {
     e.hitX = false; e.x += e.vx * dt;
@@ -424,6 +439,7 @@ class Run {
         else if (k.k === 'b') { snd('bell'); this.bell = true; this.coins += 10; this.say('🔔 Cheys Glöckchen! Chey war hier…'); }
         else if (k.k === 'r') { snd('treasure'); this.coins += 30; this.shards += 8; this.time += 15; this.say('💎 Schatz! +30 🪙  +8 🌙  +15s'); this.spark(k.x, k.y, 24, '#9be8ff'); }
         else if (k.k === 'c') { snd('power'); this.chest = true; this.say('Truhe! Beute nach dem Level'); }
+        else if (k.k === 'K') { snd('power'); this.keyN++; this.say('🔑 Schlüssel gefunden! Jetzt zum Tor'); this.spark(k.x, k.y, 14, '#ffe06a'); }
       }
     }
 
@@ -437,6 +453,14 @@ class Run {
     for (const f of this.fx) { f.t -= dt; f.y -= 30 * dt; }
     this.fx = this.fx.filter(f => f.t > 0);
     const alive = P.filter(q => !q.ko);
+    if (this.gate && !this.gate.open && !this.room) {
+      const G = this.gate, gx = G.tx * TS, near = alive.find(q => q.x + q.w > gx - 14 && q.x < gx + TS + 14 && q.y < G.y1 * TS);
+      if (near && this.keyN > 0) {
+        this.keyN--; G.open = true; snd('door'); this.say('🔓 Das Tor öffnet sich!'); this.shake = .25;
+        for (let y = 0; y < G.y1; y++) if (this.g[y][G.tx] === 7) { this.g[y][G.tx] = 0; this.spark(gx + 16, y * TS + 16, 3, '#ffe06a'); }
+        this.g._ch = [];
+      } else if (near && this.t - this.gateHint > 5) { this.gateHint = this.t; this.say('🔒 Das Tor braucht einen Schlüssel – such ihn weiter vorn'); }
+    }
     if (!this.room) for (const c of this.cps) if (!c.on && alive.some(q => q.x + 11 > c.x)) this.cpAt(c);
     if (alive.length && alive.every(q => q.x > this.flagX)) this.finish(true, 'Ziel erreicht!');
     this.cam = clamp(ld.x - VW * .4, 0, this.cols * TS - VW);
@@ -525,12 +549,18 @@ class Run {
 
   finish(win, why) {
     if (this.done) return; this.done = true;
-    this.end({ win, why, cpX: this.cpX || 0, cpY: this.cpY || 0, cpTime: this.cpTime || 0, hits: this.hits, combo: this.maxCombo, shards: this.shards, coins: this.coins, moon: this.moon, kills: this.kills, rec: this.rec, elapsed: this.t, par: this.par, secrets: this.secrets, bell: !!this.bell, chest: !!this.chest, time: Math.ceil(this.time) });
+    this.end({ win, why, gates: this.gate && this.gate.open ? 1 : 0, cpHit: this.cps.filter(c => c.on).length, coop: this.coop, chars: this.chars, cpX: this.cpX || 0, cpY: this.cpY || 0, cpTime: this.cpTime || 0, hits: this.hits, combo: this.maxCombo, shards: this.shards, coins: this.coins, moon: this.moon, kills: this.kills, rec: this.rec, elapsed: this.t, par: this.par, secrets: this.secrets, bell: !!this.bell, chest: !!this.chest, time: Math.ceil(this.time) });
   }
 
   drawTile(c, v, tx, ty, st) {
     const sp = this.sp, wi = this.wi, x = tx * TS, y = ty * TS, h = hash(tx * 73856093 ^ ty * 19349663), pl = PLAT[wi];
     if (v === 2) { c.fillStyle = wi === 3 ? '#9fd8ff' : wi === 5 ? '#ff7a2a' : '#ccd'; for (let k = 0; k < 2; k++) { c.beginPath(); c.moveTo(x + k * 16, y + TS); c.lineTo(x + k * 16 + 8, y + TS / 2); c.lineTo(x + k * 16 + 16, y + TS); c.fill(); } return; }
+    if (v === 7) {
+      const gg = c.createLinearGradient(x, 0, x + TS, 0); gg.addColorStop(0, '#6a5a2a'); gg.addColorStop(.5, '#d8b84a'); gg.addColorStop(1, '#5a4a1e');
+      c.fillStyle = gg; c.fillRect(x + 6, y, TS - 12, TS); c.fillStyle = 'rgba(0,0,0,.25)'; c.fillRect(x + TS / 2 - 1, y, 2, TS); c.fillStyle = '#fff3b0'; c.fillRect(x + 8, y, 3, TS);
+      if ((ty + 1 < ROWS && this.g[ty + 1][tx] !== 7) || (ty > 0 && this.g[ty - 1][tx] !== 7 && false)) { c.fillStyle = '#ffd54a'; c.beginPath(); c.roundRect(x + 4, y + TS - 22, TS - 8, 20, 4); c.fill(); c.strokeStyle = '#6a4a00'; c.lineWidth = 2; c.stroke(); c.fillStyle = '#3a2800'; c.beginPath(); c.arc(x + TS / 2, y + TS - 14, 3, 0, 7); c.fill(); c.fillRect(x + TS / 2 - 1.2, y + TS - 14, 2.4, 8); }
+      return;
+    }
     if (v === 6) {
       const right = this.g[ty][tx - 1] === 6, top = !(ty > 0 && this.g[ty - 1][tx] === 6);
       c.fillStyle = '#2fa84f'; c.fillRect(x, y, TS, TS); c.fillStyle = '#58d97a'; c.fillRect(right ? x + 4 : x + 8, y, 5, TS); c.fillStyle = '#1d7a38'; c.fillRect(right ? x + TS - 5 : x, y, 5, TS);
@@ -610,7 +640,7 @@ class Run {
       c.beginPath(); c.roundRect(k.x - 8, k.y - 60, 16, 18, 5); c.fillStyle = k.on ? '#ffd54a' : '#8a8a99'; c.fill(); c.strokeStyle = '#3a2c1c'; c.lineWidth = 2; c.stroke();
       c.fillStyle = k.on ? '#fff6c8' : '#b8b8c8'; c.beginPath(); c.arc(k.x, k.y - 51, 3.4, 0, 7); c.fill();
     }
-    for (const k of this.pick) { if (k.x < cam - 40 || k.x > cam + VW + 40) continue; if (k.k !== 's') { c.globalAlpha = .22 + .1 * Math.sin(tt * 5 + k.x); c.fillStyle = k.k === 'o' ? '#ffd54a' : '#fff6c8'; c.beginPath(); c.arc(k.x, k.y, k.k === 'm' ? 28 : 15, 0, 7); c.fill(); c.globalAlpha = 1; } em({ s: '🌙', o: '🪙', m: '🌕', c: '🎁', b: '🔔', r: '💎' }[k.k], k.x, k.y + Math.sin(tt * 4 + k.x) * 3, k.k === 'm' ? 38 : 20); }
+    for (const k of this.pick) { if (k.x < cam - 40 || k.x > cam + VW + 40) continue; if (k.k !== 's') { c.globalAlpha = .22 + .1 * Math.sin(tt * 5 + k.x); c.fillStyle = k.k === 'o' || k.k === 'K' ? '#ffd54a' : '#fff6c8'; c.beginPath(); c.arc(k.x, k.y, k.k === 'm' ? 28 : k.k === 'K' ? 22 : 15, 0, 7); c.fill(); c.globalAlpha = 1; } em({ s: '🌙', o: '🪙', m: '🌕', c: '🎁', b: '🔔', r: '💎', K: '🔑' }[k.k], k.x, k.y + Math.sin(tt * 4 + k.x) * 3, k.k === 'm' ? 38 : k.k === 'K' ? 28 : 20); }
     for (const d of this.drops) em(d.d.e, d.x, d.y + Math.sin(tt * 5) * 4, 28);
     for (const e of this.ent) {
       if (e.x < cam - 60 || e.x > cam + VW + 60) continue;
@@ -625,7 +655,7 @@ class Run {
       const pal = PAL[q.id] || PAL.luna;
       if (q.ko) { c.globalAlpha = .4; drawCat(c, q.x + q.w / 2, q.y + q.h / 2 - 6, 42, q.face, tt * 10, { air: true }, pal); c.globalAlpha = 1; em('💫', q.x + 11, q.y - 14 + Math.sin(tt * 6) * 3, 22); continue; }
       if (q.on) { c.fillStyle = 'rgba(0,0,0,.22)'; c.beginPath(); c.ellipse(q.x + 11, q.y + q.h + 1, 12, 3.5, 0, 0, 7); c.fill(); }
-      if (q.inv <= 0 || Math.floor(q.inv * 12) % 2) drawCat(c, q.x + q.w / 2, q.y + q.h / 2 + 2, 42, q.face, tt * 10, { run: Math.abs(q.vx) > 30 && q.on, air: !q.on }, pal);
+      if (q.inv <= 0 || Math.floor(q.inv * 12) % 2) drawCat(c, q.x + q.w / 2, q.y + q.h / 2 + 2, 42, q.face, tt * 10, { run: Math.abs(q.vx) > 30 && q.on, air: !q.on, cos: true }, pal);
       if (this.coop) { const bo = Math.sin(tt * 5) * 1.5; c.fillStyle = ['#6fd0ff', '#ff8fb8'][q.idx]; c.beginPath(); c.moveTo(q.x + 11, q.y - 12 + bo); c.lineTo(q.x + 5, q.y - 21 + bo); c.lineTo(q.x + 17, q.y - 21 + bo); c.closePath(); c.fill(); }
     }
     if (this.ghost && !this.room) {
@@ -652,7 +682,7 @@ class Run {
     c.textAlign = 'center'; c.fillStyle = this.time < 15 ? '#ffb0b0' : '#fff'; c.fillText(tl, VW / 2, 24);
     c.font = 'bold 14px "Trebuchet MS",sans-serif'; const nw = c.measureText(nm).width + 26;
     glassRect(c, VW / 2 - nw / 2, 44, nw, 22, 11, 'rgba(26,14,58,.42)'); c.fillStyle = '#ffe9a8'; c.fillText(nm, VW / 2, 56);
-    const cs = '🪙 ' + this.coins + '  🌙 ' + this.shards + (this.moon ? ' 🌕' : '');
+    const cs = '🪙 ' + this.coins + '  🌙 ' + this.shards + (this.moon ? ' 🌕' : '') + (this.keyN ? ' 🔑' : '');
     c.font = 'bold 20px "Trebuchet MS",sans-serif'; const sw2 = c.measureText(cs).width + 30;
     glassRect(c, VW - 70 - sw2, 8, sw2, 34, 17);
     c.textAlign = 'right'; c.fillStyle = '#fff'; c.fillText(cs, VW - 85, 25);

@@ -48,7 +48,7 @@ function showTitle() {
   <p>Der Mondverschlinger hat <b>Chey</b> entführt und den Mond verschluckt.<br>Hilf <b>Luna</b>, Chey zu retten!</p>
   <div class="row c"><button class=g onclick="start()">▶ ${save.seen.intro ? 'Weiter' : 'Neues Abenteuer'}</button><button class=r onclick="resetGame()">Neu starten</button></div>
   <div class="row c"><button class=g onclick="daily()">📅 Tageslevel${save.daily.streak ? ' 🔥' + save.daily.streak : ''}</button><button class=d onclick="chars('title')">🐱 Charaktere</button><button class=d onclick="album()">📖 Album</button><button class=d onclick="settings()">⚙️ Einstellungen &amp; Cloud</button><button class=d data-fs onclick="FS.toggle()">⛶</button>${save.cleared['5:boss'] ? `<button class=g onclick="startNG()">🔁 Neues Spiel+ (${(save.ng || 0) + 1})</button>` : ''}</div>
-  <small>Handy quer halten · Android/iPhone: im Browser "Zum Startbildschirm"</small><br><small>Version 13</small></div>`;
+  <small>Handy quer halten · Android/iPhone: im Browser "Zum Startbildschirm"</small><br><small>Version 14</small></div>`;
 }
 function start() { if (!save.seen.intro) cine('intro', {}, () => story(STORY.intro, () => { save.seen.intro = 1; persist(); map(); })); else map(); }
 function resetGame() { if (confirm('Gesamten Fortschritt löschen?')) { save = defSave(); persist(); lastAt = null; showTitle(); } }
@@ -197,7 +197,7 @@ function endLevel(wi, li, k, r) {
   const rk = rankOf(r), rko = save.rank[key]; if (!rko || RANKV[rk] > RANKV[rko]) { save.rank[key] = rk; if (rko) lines.push('🏅 Neuer Bestrang!'); }
   lines.push(`💥 ${r.hits} Treffer erhalten`);
   for (const n in r.kills) save.stats.kills[n] = (save.stats.kills[n] || 0) + r.kills[n];
-  save.stats.secrets += r.secrets || 0; save.stats.levels++;
+  save.stats.secrets += r.secrets || 0; save.stats.levels++; save.stats.gates = (save.stats.gates || 0) + (r.gates || 0); save.stats.cps = (save.stats.cps || 0) + (r.cpHit || 0); if (r.coop) save.stats.coop = (save.stats.coop || 0) + 1; save.stats.chars = save.stats.chars || {}; for (const ch of r.chars || []) save.stats.chars[ch] = 1;
   save.shards += gain; save.coins += Math.round((cg + tb) * (1 + .5 * (save.ng || 0))); save.cleared[key] = 1; save.prog[wi] = Math.max(save.prog[wi], k + 1); persist(); checkAch();
   if (Math.floor(save.shards / 20) > lv0) lines.push('⭐ Neuer Skillpunkt im Mondbaum!');
   ui.innerHTML = `<div class=card style="text-align:center;margin-top:8vh"><div>${catImg('luna', 90)}</div><h2>✅ ${W[wi].name} ${li + 1} geschafft!</h2><div class=rank style="color:${RCOL[rk]}">${rk}</div><p>🪙 +${cg} · 🌙 +${gain}${first ? '' : ' (Wiederholung)'} · ⏱ ${r.time}s übrig</p>${lines.map(l => `<p>${l}</p>`).join('')}<div class="row c"><button class=g onclick="map({from:${k},advance:true})">Weiter ▶</button><button onclick="play(${wi},${li},${k})">🔄 Nochmal</button><button class=d onclick="map({from:${k}})">🗺️ Karte</button></div></div>`;
@@ -280,7 +280,8 @@ function settings(msg) {
   ${msg ? `<div class=card>${msg}</div>` : ''}
   <div class=card><h3>🔊 Ton</h3><label>🎵 Musik</label><input type=range min=0 max=1 step=.05 value="${PREFS.music}" oninput="setPref('music',+this.value)">
   <label>🔊 Effekte</label><input type=range min=0 max=1 step=.05 value="${PREFS.sfx}" oninput="setPref('sfx',+this.value)">
-  <label style="display:block;margin:8px 0"><input type=checkbox ${PREFS.vib ? 'checked' : ''} style="width:auto" onchange="setPref('vib',this.checked)"> 📳 Vibration bei Treffern</label></div>
+  <label style="display:block;margin:8px 0"><input type=checkbox ${PREFS.vib ? 'checked' : ''} style="width:auto" onchange="setPref('vib',this.checked)"> 📳 Vibration bei Treffern</label>
+  <label style="display:block;margin:8px 0"><input type=checkbox ${PREFS.retro ? 'checked' : ''} style="width:auto" onchange="setPref('retro',this.checked)"> 🎹 Retro-Sound (8-Bit-Musik statt Orchester)</label></div>
   <div class=card><h3>🎮 Steuerung &amp; Leistung</h3><label>Touch-Tasten</label>
   <div class=row><button class="${PREFS.btn === .85 ? 'g' : 'd'}" onclick="setPref('btn',.85);settings()">Klein</button><button class="${PREFS.btn === 1 ? 'g' : 'd'}" onclick="setPref('btn',1);settings()">Normal</button><button class="${PREFS.btn === 1.25 ? 'g' : 'd'}" onclick="setPref('btn',1.25);settings()">Groß</button></div>
   <label style="display:block;margin:8px 0"><input type=checkbox ${PREFS.lefty ? 'checked' : ''} style="width:auto" onchange="setPref('lefty',this.checked)"> ✋ Linkshänder-Layout (Tasten spiegeln)</label>
