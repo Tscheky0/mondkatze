@@ -30,7 +30,16 @@ const ACC = (() => {
   }
   const ready = () => { const c = cfg(); return !!(c.apiKey && c.url); };
 
-  async function sign(kind, name, pw) {
+  // Falscher, alt gespeicherter Schluessel aus der lokalen Einrichtung? Dann auf die Standardwerte des Spiels zurueckfallen und neu versuchen.
+  async function sign(kind, name, pw, retry) {
+    try { return await sign0(kind, name, pw); }
+    catch (e) {
+      const o = rd(LF), d = window.MK_FIREBASE || {};
+      if (!retry && /API-Schlüssel/.test(e.message) && d.apiKey && (o.apiKey || o.url) && (o.apiKey !== d.apiKey || o.url !== d.url)) { try { localStorage.removeItem(LF); } catch (x) { } return sign(kind, name, pw, true); }
+      throw e;
+    }
+  }
+  async function sign0(kind, name, pw) {
     const c = cfg(); if (!ready()) throw new Error('Firebase ist noch nicht eingerichtet.');
     name = String(name || '').trim(); if (!okName(name)) throw new Error('Der Name braucht 3–16 Zeichen: Buchstaben, Zahlen, _ oder -.');
     if (String(pw || '').length < 6) throw new Error('Das Passwort braucht mindestens 6 Zeichen.');
