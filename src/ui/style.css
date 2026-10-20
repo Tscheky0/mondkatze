@@ -118,8 +118,8 @@ input[type=range]{width:100%;accent-color:var(--moon)}
 #hud>div{display:flex;gap:var(--sp-1);align-items:center;pointer-events:auto}
 #hud span{background:linear-gradient(145deg,#ffffff33,#ffffff0d),#1208288c;
   border:1px solid var(--line);border-radius:var(--r-pill);padding:7px 14px;font-size:15px;font-weight:700;
-  -webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);box-shadow:0 4px 14px #0a022073,inset 0 1px 0 #ffffff59}
-#hud button{padding:7px 14px;font-size:17px}
+  box-shadow:0 4px 14px #0a022073,inset 0 1px 0 #ffffff59}
+#hud button{padding:7px 14px;font-size:17px;-webkit-backdrop-filter:none;backdrop-filter:none}
 
 /* ---------- Overlays ---------- */
 #pop{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);display:none;align-items:center;gap:14px;border-radius:var(--r-lg);padding:12px 18px;max-width:94vw;background:linear-gradient(145deg,#ffffff3d,#ffffff12),#1a0e3a99}
@@ -134,10 +134,13 @@ input[type=range]{width:100%;accent-color:var(--moon)}
 #tc{position:absolute;inset:0;pointer-events:none}
 #tc b{position:absolute;bottom:18px;width:calc(84px*var(--bs));height:calc(84px*var(--bs));border-radius:50%;
   background:radial-gradient(circle at 32% 26%,#ffffff6b,#ffffff1f 55%,#ffffff14);border:1.5px solid #ffffff80;
-  -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);box-shadow:0 8px 20px #0a022073,inset 0 1px 0 #ffffffa6;
+  box-shadow:0 8px 20px #0a022073,inset 0 1px 0 #ffffffa6;
   display:flex;align-items:center;justify-content:center;font-size:calc(34px*var(--bs));pointer-events:auto;touch-action:none;transition:background .08s,transform .08s}
 #tc b.on{background:radial-gradient(circle at 32% 26%,#ffffffd9,#ffffff73 70%);transform:scale(.94)}
-#q{position:absolute;top:8px;right:8px;width:54px;height:38px;border-radius:var(--r-pill);font-size:19px;pointer-events:auto;padding:0;--tint:#1208288c}
+#q,#fs{position:absolute;top:8px;width:54px;height:38px;border-radius:var(--r-pill);font-size:19px;pointer-events:auto;padding:0;--tint:#1208288c;-webkit-backdrop-filter:none;backdrop-filter:none}
+#q{right:8px}
+#fs{right:70px}
+.is-fs #fs{opacity:.8}
 #bl{left:14px}
 #br{left:calc(14px + 98px*var(--bs))}
 #ba{right:calc(14px + 98px*var(--bs))}
@@ -152,5 +155,6 @@ input[type=range]{width:100%;accent-color:var(--moon)}
 #tc.lefty #bd{right:auto;left:calc(14px + 196px*var(--bs))}
 #tc.lefty #bu{left:auto;right:calc(14px + 49px*var(--bs))}
 
+html.lowfx *{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 @media (max-height:480px){.title{margin-top:0;padding:14px}.title h1{font-size:36px}}

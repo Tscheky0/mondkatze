@@ -3,12 +3,11 @@ const SKYS = { day: null, dawn: ['#ff9a8b', '#ffe3b3'], dusk: ['#4b3a8f', '#ff9a
 const SKYS_LAVA = { day: ['#5a1a1a', '#ff8a3d'], dawn: ['#7a2a1a', '#ffb060'], dusk: ['#2a0a0a', '#c4401a'], night: ['#120505', '#4a1010'], storm: ['#2a2020', '#7a3a2a'] };
 const skyFor = (wi, kind) => (wi === 5 ? SKYS_LAVA[kind] : SKYS[kind]) || W[wi].sky;
 const hash = n => { n = (n ^ 61) ^ (n >>> 16); n = n + (n << 3); n = n ^ (n >>> 4); n = Math.imul(n, 0x27d4eb2d); return (n ^ (n >>> 15)) >>> 0; };
-// Glas-Panel fuer Canvas-UI (HUD, Banner): Blur-freie Optik mit Verlauf, Glanzkante und Schatten.
+// Glas-Panel fuer Canvas-UI (HUD, Banner): Verlauf + Glanzkante, ohne teure Schatten-Unschaerfe.
 function glassRect(c, x, y, w, h, r, tint) {
   c.save();
-  c.shadowColor = 'rgba(10,2,32,.45)'; c.shadowBlur = 14; c.shadowOffsetY = 4;
+  c.beginPath(); c.roundRect(x - 1, y + 3, w + 2, h, r); c.fillStyle = 'rgba(10,2,32,.28)'; c.fill();
   c.beginPath(); c.roundRect(x, y, w, h, r); c.fillStyle = tint || 'rgba(26,14,58,.55)'; c.fill();
-  c.shadowColor = 'transparent';
   const g = c.createLinearGradient(x, y, x, y + h); g.addColorStop(0, 'rgba(255,255,255,.34)'); g.addColorStop(.5, 'rgba(255,255,255,.07)'); g.addColorStop(1, 'rgba(255,255,255,.12)');
   c.fillStyle = g; c.fill();
   c.lineWidth = 1.2; c.strokeStyle = 'rgba(255,255,255,.42)'; c.stroke();
@@ -20,6 +19,16 @@ function shade(hex, f) {
   const n = parseInt(hex.slice(1), 16), m = f < 0 ? 0 : 255, a = Math.abs(f);
   const ch = v => Math.round(v + (m - v) * a);
   return `rgb(${ch(n >> 16)},${ch((n >> 8) & 255)},${ch(n & 255)})`;
+}
+// Emoji einmal in kleine Bitmaps rendern; drawImage ist um ein Vielfaches schneller als fillText mit Farb-Emoji.
+const _emc = new Map();
+function drawEm(c, e, x, y, s) {
+  s = Math.max(6, Math.round(s / 2) * 2); const k = e + s; let sp = _emc.get(k);
+  if (!sp) {
+    const p = Math.ceil(s * 1.5); sp = document.createElement('canvas'); sp.width = sp.height = p; sp._p = p;
+    const g = sp.getContext('2d'); g.font = EMF(s); g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#000'; g.fillText(e, p / 2, p / 2); _emc.set(k, sp);
+  }
+  c.drawImage(sp, x - sp._p / 2, y - sp._p / 2);
 }
 const EMF = s => s + 'px "Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif';
 
@@ -55,13 +64,52 @@ function drawScenery(c, wi, sp, cam, t, VWd, VHt) {
     c.lineTo(VWd, VHt); c.fill();
   }
   { const hz = c.createLinearGradient(0, VHt - 300, 0, VHt - 90), rr = [1, 3, 5].map(i => parseInt(sp.sky[1].slice(i, i + 2), 16)); hz.addColorStop(0, `rgba(${rr},0)`); hz.addColorStop(1, `rgba(${rr},.3)`); c.globalAlpha = 1; c.fillStyle = hz; c.fillRect(0, VHt - 300, VWd, 210); }
-  c.globalAlpha = 1; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = '#000';
+  c.globalAlpha = 1; drawWorldDeco(c, wi, sp, cam, t, VWd, VHt);
+  c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = '#000';
   const gap = sp.gap, off = cam * .5, i0 = Math.floor(off / gap) - 1;
   for (let i = i0; i < i0 + Math.ceil(VWd / gap) + 3; i++) {
     const hh = hash(i * 31 + wi * 7 + sp.li * 3), sz = (62 + hh % 50) * sp.sc;
-    c.font = EMF(sz); c.fillText(sp.objs[(hh >>> 3) % sp.objs.length], i * gap - off + hh % 60, VHt - 92 - sz * .42 + hh % 14);
+    drawEm(c, sp.objs[(hh >>> 3) % sp.objs.length], i * gap - off + hh % 60, VHt - 92 - sz * .42 + hh % 14, sz);
   }
   if (sp.kind === 'night' || sp.kind === 'storm' || sp.kind === 'dusk') { c.fillStyle = sp.kind === 'dusk' ? 'rgba(40,10,60,.18)' : 'rgba(10,10,50,.3)'; c.fillRect(0, 0, VWd, VHt); }
+}
+
+// Weltspezifische Fernkulisse: jede Welt bekommt ihre eigene Silhouette und Stimmung.
+const _gl = (c, x, y, r, rgb, a) => { const g = c.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, `rgba(${rgb},1)`); g.addColorStop(1, `rgba(${rgb},0)`); c.save(); c.globalAlpha = a; c.fillStyle = g; c.beginPath(); c.arc(x, y, r, 0, 7); c.fill(); c.restore(); };
+function drawWorldDeco(c, wi, sp, cam, t, W_, H_) {
+  const k = sp.kind, night = k === 'night', wrap = (v, m) => ((v % m) + m) % m;
+  c.save();
+  if (wi === 0) {
+    c.fillStyle = night ? 'rgba(10,30,50,.4)' : 'rgba(40,110,70,.3)'; c.beginPath(); c.moveTo(0, H_);
+    for (let x = 0; x <= W_; x += 16) { const u = (x + cam * .12) * .05; c.lineTo(x, H_ - 175 - Math.abs(Math.sin(u * 1.7) + Math.sin(u * .6)) * 24 - (hash(Math.floor((x + cam * .12) / 16)) % 7)); }
+    c.lineTo(W_, H_); c.fill();
+    if (!night) { c.strokeStyle = 'rgba(30,40,60,.6)'; c.lineWidth = 1.6; for (let i = 0; i < 3; i++) { const x = wrap(t * 30 + i * 330, W_ + 100) - 50, y = 110 + i * 40 + Math.sin(t * 2 + i) * 6, w = Math.sin(t * 10 + i) * 3; c.beginPath(); c.moveTo(x - 6, y); c.quadraticCurveTo(x - 3, y - 4 + w, x, y); c.quadraticCurveTo(x + 3, y - 4 + w, x + 6, y); c.stroke(); } }
+  } else if (wi === 1) {
+    for (let i = 0; i < 9; i++) { const x = wrap(i * 137 - cam * .3, W_ + 80) - 40, len = 70 + (i * 53) % 90, sw = Math.sin(t * 1.3 + i) * 6; c.strokeStyle = 'rgba(30,120,50,.6)'; c.lineWidth = 3; c.beginPath(); c.moveTo(x, 0); c.quadraticCurveTo(x + sw, len * .5, x + sw * 1.5, len); c.stroke(); c.fillStyle = 'rgba(60,170,70,.7)'; c.beginPath(); c.ellipse(x + sw * 1.5, len + 3, 5, 3, .6, 0, 7); c.fill(); }
+    if (!night) { c.fillStyle = 'rgba(255,255,200,.07)'; for (let i = 0; i < 4; i++) { const x = wrap(i * 260 - cam * .15, W_ + 200) - 100; c.beginPath(); c.moveTo(x, 0); c.lineTo(x + 60, 0); c.lineTo(x + 170, H_); c.lineTo(x + 60, H_); c.fill(); } }
+  } else if (wi === 2) {
+    c.fillStyle = 'rgba(150,100,50,.28)'; for (let i = 0; i < 3; i++) { const x = wrap(i * 560 - cam * .1, W_ + 400) - 200; c.beginPath(); c.moveTo(x, H_ - 150); c.lineTo(x + 120, H_ - 150); c.lineTo(x + 60, H_ - 250 + i * 12); c.fill(); }
+    for (let L = 0; L < 2; L++) { c.fillStyle = L ? 'rgba(235,195,115,.5)' : 'rgba(225,180,100,.32)'; c.beginPath(); c.moveTo(0, H_); for (let x = 0; x <= W_; x += 20) c.lineTo(x, H_ - 140 - L * 22 - Math.sin((x + cam * (.18 + L * .1)) * .008 + L) * 26); c.lineTo(W_, H_); c.fill(); }
+  } else if (wi === 3) {
+    if (night || k === 'dusk' || k === 'storm') for (let b = 0; b < 3; b++) {
+      const g = c.createLinearGradient(0, 50 + b * 28, 0, 150 + b * 28), col = ['109,255,176', '122,168,255', '200,128,255'][b]; g.addColorStop(0, `rgba(${col},0)`); g.addColorStop(.5, `rgba(${col},.32)`); g.addColorStop(1, `rgba(${col},0)`);
+      c.fillStyle = g; c.beginPath(); c.moveTo(0, 50 + b * 28 + Math.sin(t * .6 + b) * 14); for (let x = 0; x <= W_; x += 30) c.lineTo(x, 50 + b * 28 + Math.sin(x * .01 + t * .6 + b) * 22); for (let x = W_; x >= 0; x -= 30) c.lineTo(x, 150 + b * 28 + Math.sin(x * .012 + t * .5 + b) * 22); c.fill();
+    }
+    for (let i = 0; i < 14; i++) { const x = wrap(i * 173 - cam * .25, W_), y = 200 + (i * 71) % 200, a = Math.max(0, Math.sin(t * 2 + i * 1.7)); c.fillStyle = `rgba(255,255,255,${a * .8})`; c.fillRect(x - 1, y - 4, 2, 8); c.fillRect(x - 4, y - 1, 8, 2); }
+  } else if (wi === 4) {
+    c.fillStyle = night ? 'rgba(30,30,60,.5)' : 'rgba(80,80,110,.35)'; c.beginPath(); c.moveTo(0, H_);
+    for (let x = 0; x <= W_ + 20; x += 20) { const u = (x + cam * .1) / 90, tri = Math.abs((u % 2) - 1); c.lineTo(x, H_ - 150 - tri * 110 - (hash(Math.floor(u)) % 30)); }
+    c.lineTo(W_, H_); c.fill();
+    c.fillStyle = night ? 'rgba(160,170,210,.22)' : 'rgba(255,255,255,.38)'; for (let i = 0; i < 7; i++) { const x = wrap(i * 190 + t * 12 - cam * .06, W_ + 300) - 150; c.beginPath(); c.ellipse(x, H_ - 70 + (i % 3) * 8, 110, 20, 0, 0, 7); c.fill(); }
+  } else if (wi === 5) {
+    const hz = c.createLinearGradient(0, H_ - 300, 0, H_ - 100); hz.addColorStop(0, 'rgba(255,90,20,0)'); hz.addColorStop(1, `rgba(255,110,30,${.38 + .08 * Math.sin(t * 2)})`); c.fillStyle = hz; c.fillRect(0, H_ - 300, W_, 200);
+    for (let i = 0; i < 2; i++) {
+      const x = wrap(i * 620 - cam * .1, W_ + 500) - 250, h = 140 + i * 30; c.fillStyle = 'rgba(30,8,8,.7)'; c.beginPath(); c.moveTo(x, H_ - 120); c.lineTo(x + 100, H_ - 120 - h); c.lineTo(x + 130, H_ - 120 - h); c.lineTo(x + 240, H_ - 120); c.fill();
+      _gl(c, x + 115, H_ - 120 - h, 34, '255,120,30', .5 + .25 * Math.sin(t * 3 + i));
+      for (let p = 0; p < 4; p++) { const ph = (t * .4 + p / 4 + i * .3) % 1; c.fillStyle = `rgba(60,40,40,${.4 * (1 - ph)})`; c.beginPath(); c.arc(x + 115 + Math.sin(t + p) * 8 + ph * 18, H_ - 120 - h - ph * 80, 8 + ph * 16, 0, 7); c.fill(); }
+    }
+  }
+  c.restore();
 }
 
 function drawWeather(c, type, t, VWd, VHt) {
@@ -88,7 +136,9 @@ function drawDragon(c, x, y, s, t, face, col) {
   c.restore();
 }
 
+const _vig = {};
 function drawVignette(c, VWd, VHt) {
-  const g = c.createRadialGradient(VWd / 2, VHt / 2, VHt * .45, VWd / 2, VHt / 2, VWd * .62);
-  g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,20,.35)'); c.fillStyle = g; c.fillRect(0, 0, VWd, VHt);
+  const k = VWd + 'x' + VHt; let g = _vig[k];
+  if (!g) { g = _vig[k] = c.createRadialGradient(VWd / 2, VHt / 2, VHt * .45, VWd / 2, VHt / 2, VWd * .62); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,20,.35)'); }
+  c.fillStyle = g; c.fillRect(0, 0, VWd, VHt);
 }

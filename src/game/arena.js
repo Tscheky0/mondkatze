@@ -49,7 +49,7 @@ function arenaMount(host, wi, kind) {
     c.fillStyle = sp.pal.dirt; c.fillRect(-20, GY, 1000, 90); c.fillStyle = sp.pal.top; c.fillRect(-20, GY, 1000, 10);
     c.textAlign = 'center'; c.textBaseline = 'middle';
     // --- Boss
-    let bx = BX, by = GY - 105 + Math.sin(t * 2) * 6, rot = 0, sc = 1, ba = 1;
+    let bx = BX + (1 - e2(cl(t / 1.1, 0, 1))) * 300, by = GY - 105 + Math.sin(t * 2) * 6, rot = 0, sc = 1, ba = 1;
     if (b.pose === 'tele') { const u = e2(cl(b.t / .5, 0, 1)); if (b.type === 0) { by -= 40 * u; rot = -.25 * u; } else if (b.type === 1) { by += 18 * u; sc = 1 - .15 * u; } else { by -= 15 * u; } }
     if (b.pose === 'strike') {
       if (b.type === 0) { const u = b.t < .25 ? e2(b.t / .25) : 1 - e2(cl((b.t - .25) / .3, 0, 1)); bx = BX - 330 * cl(u, 0, 1); rot = .2 * u; }
@@ -62,8 +62,9 @@ function arenaMount(host, wi, kind) {
       if (b.type === 1) { c.strokeStyle = '#ff3b3b'; c.lineWidth = 6; c.beginPath(); c.moveTo(bx - 150, GY + 2); c.lineTo(LX + 60, GY + 2); c.stroke(); }
       if (b.type === 2) for (let i = 0; i < 4; i++) { const an = t * 4 + i * 1.57; c.font = EMF(26); c.fillStyle = '#000'; c.fillText('🔮', bx + Math.cos(an) * 110, by + Math.sin(an) * 60); }
     }
+    { const ag = c.createRadialGradient(bx, by, 20, bx, by, 190); ag.addColorStop(0, ['rgba(120,255,150,.22)', 'rgba(255,170,60,.2)', 'rgba(255,210,90,.22)', 'rgba(150,220,255,.24)', 'rgba(110,150,255,.24)', 'rgba(255,70,60,.26)'][wi]); ag.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = ag; c.fillRect(bx - 200, by - 200, 400, 400); }
     c.fillStyle = 'rgba(0,0,0,.28)'; c.beginPath(); c.ellipse(bx, GY + 6, 90 * sc, 14, 0, 0, 7); c.fill();
-    c.save(); c.translate(bx, by); c.rotate(rot); c.scale(sc, sc * (b.pose === 'tele' && b.type === 1 ? .85 : 1)); c.globalAlpha = ba; c.fillStyle = '#000'; if (!drawCreature(c, B.n, 0, 0, 230, -1, t * 10, {})) { c.font = EMF(200); c.fillText(B.e, 0, 0); } c.restore(); c.globalAlpha = 1;
+    c.save(); c.translate(bx, by); c.rotate(rot); c.scale(sc, sc * (b.pose === 'tele' && b.type === 1 ? .85 : 1)); c.globalAlpha = ba; c.fillStyle = '#000'; if (b.pose === 'hurt' && b.t < .14) c.filter = 'brightness(2.4)'; if (!drawCreature(c, B.n, 0, 0, 230, -1, t * 10, {})) { c.font = EMF(200); c.fillText(B.e, 0, 0); } c.filter = 'none'; c.restore(); c.globalAlpha = 1;
     if (b.pose === 'strike') {
       if (b.type === 0 && b.t > .22 && b.t < .5) { const u = (b.t - .22) / .28; c.strokeStyle = `rgba(255,255,255,${1 - u})`; c.lineWidth = 8; c.beginPath(); c.ellipse(LX + 90, GY, 20 + u * 110, 8 + u * 22, 0, 0, 7); c.stroke(); }
       if (b.type === 1) { const u = cl(b.t / .35, 0, 1), x = lerp(BX - 120, LX + 40, u); c.fillStyle = '#ff5a3b'; c.beginPath(); c.moveTo(x - 30, GY); c.quadraticCurveTo(x, GY - 70, x + 30, GY); c.quadraticCurveTo(x, GY - 25, x - 30, GY); c.fill(); }
@@ -87,6 +88,7 @@ function arenaMount(host, wi, kind) {
     for (const s of A.txt) { c.globalAlpha = Math.min(1, s.l * 2); c.font = 'bold 34px "Trebuchet MS",sans-serif'; c.lineWidth = 6; c.strokeStyle = 'rgba(0,0,0,.7)'; c.fillStyle = s.col; c.strokeText(s.t, s.x, s.y); c.fillText(s.t, s.x, s.y); }
     c.globalAlpha = 1; c.setTransform(1, 0, 0, 1, 0, 0);
     if (A.flash > 0) { c.fillStyle = `rgba(255,40,40,${A.flash * .35})`; c.fillRect(0, 0, 960, 400); }
+    if (!PREFS.saver) drawWeather(c, WEATHER[wi], t, 960, 400);
     drawVignette(c, 960, 400);
   }
 

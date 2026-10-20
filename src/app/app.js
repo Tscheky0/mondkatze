@@ -1,5 +1,5 @@
 // UI, Speicherstand, Story, Laeden, Skillbaum, Beutel, Bosskampf und Spielschleife.
-const $ = s => document.querySelector(s), ui = $('#ui'), cv = $('#cv'), ctx = cv.getContext('2d'), tc = $('#tc');
+const $ = s => document.querySelector(s), ui = $('#ui'), cv = $('#cv'), ctx = cv.getContext('2d', { alpha: false, desynchronized: true }), tc = $('#tc');
 const defSave = () => ({ w: 0, prog: [0, 0, 0, 0, 0, 0], shards: 0, coins: 0, skills: {}, own: {}, load: [], moons: {}, cleared: {}, cons: {}, seen: {}, bells: {}, tips: {}, cos: { own: {}, eq: {} }, stats: { kills: {}, secrets: 0, levels: 0 }, ach: {}, best: {}, ng: 0, ts: 0 });
 const SAVE_KEY = window.ADMIN ? 'mondkatze_admin' : 'mondkatze';
 let save; try { save = Object.assign(defSave(), JSON.parse(localStorage.getItem(SAVE_KEY))); } catch (e) { save = defSave(); }
@@ -47,8 +47,8 @@ function showTitle() {
   ui.innerHTML = `<div class=title><div>${catImg('luna', 130)}${catImg('chey', 100)}</div><h1>Mondkatze</h1>
   <p>Der Mondverschlinger hat <b>Chey</b> entführt und den Mond verschluckt.<br>Hilf <b>Luna</b>, Chey zu retten!</p>
   <div class="row c"><button class=g onclick="start()">▶ ${save.seen.intro ? 'Weiter' : 'Neues Abenteuer'}</button><button class=r onclick="resetGame()">Neu starten</button></div>
-  <div class="row c"><button class=d onclick="album()">📖 Album</button><button class=d onclick="settings()">⚙️ Einstellungen &amp; Cloud</button>${save.cleared['5:boss'] ? `<button class=g onclick="startNG()">🔁 Neues Spiel+ (${(save.ng || 0) + 1})</button>` : ''}</div>
-  <small>Handy quer halten · Android/iPhone: im Browser "Zum Startbildschirm"</small><br><small>Version 7</small></div>`;
+  <div class="row c"><button class=d onclick="album()">📖 Album</button><button class=d onclick="settings()">⚙️ Einstellungen &amp; Cloud</button><button class=d data-fs onclick="FS.toggle()">⛶</button>${save.cleared['5:boss'] ? `<button class=g onclick="startNG()">🔁 Neues Spiel+ (${(save.ng || 0) + 1})</button>` : ''}</div>
+  <small>Handy quer halten · Android/iPhone: im Browser "Zum Startbildschirm"</small><br><small>Version 8</small></div>`;
 }
 function start() { if (!save.seen.intro) cine('intro', {}, () => story(STORY.intro, () => { save.seen.intro = 1; persist(); map(); })); else map(); }
 function resetGame() { if (confirm('Gesamten Fortschritt löschen?')) { save = defSave(); persist(); lastAt = null; showTitle(); } }
@@ -75,7 +75,7 @@ function map(opt) {
 function hud() {
   const Wd = W[save.w];
   $('#hud').innerHTML = `<div><button class=d onclick="swW(-1)">◀</button><span>${Wd.emoji} ${Wd.name}${save.ng ? ' · NG+' + save.ng : ''}</span><button class=d onclick="swW(1)">▶</button></div>
-  <div><span>🪙 ${save.coins}</span><span>🌙 ${save.shards % 20}/20</span><span>⭐ ${pts()}</span><button onclick="bag()">🎒</button><button onclick="tree()">🌟${pts() > 0 ? '❗' : ''}</button><button class=d onclick="showTitle()">☰</button></div>`;
+  <div><span>🪙 ${save.coins}</span><span>🌙 ${save.shards % 20}/20</span><span>⭐ ${pts()}</span><button onclick="bag()">🎒</button><button onclick="tree()">🌟${pts() > 0 ? '❗' : ''}</button><button class=d data-fs onclick="FS.toggle()">⛶</button><button class=d onclick="showTitle()">☰</button></div>`;
 }
 function swW(d) {
   const n = save.w + d; if (n < 0 || n >= W.length) return;
@@ -160,9 +160,12 @@ function play(wi, li, k, race) {
   if (used.length) run.say(used.join(' · '));
   last = performance.now(); requestAnimationFrame(loop);
 }
+const buEl = $('#bu'); let slowN = 0, lastCan = null;
 function loop(t) {
   const r = run; if (!r || paused) return;
-  r.update(Math.min(.05, (t - last) / 1000) * (window.ADM ? ADM.slow : 1)); last = t; $('#bu').style.opacity = r.canUse ? 1 : .35;
+  const rdt = (t - last) / 1000;
+  if (!PREFS.saver) { slowN = rdt > .03 && rdt < .5 ? slowN + 1 : Math.max(0, slowN - 2); if (slowN > 90) { PREFS.saver = true; document.documentElement.classList.add('lowfx'); toast('🔋 Sparmodus automatisch an – läuft flüssiger'); } }
+  r.update(Math.min(.05, rdt) * (window.ADM ? ADM.slow : 1)); last = t; if (r.canUse !== lastCan) { lastCan = r.canUse; buEl.style.opacity = r.canUse ? 1 : .35; }
   if (run === r) { r.draw(ctx); if (window.ADM) { ADM.tick(); ADM.overlay(ctx, r); } requestAnimationFrame(loop); }
 }
 function endLevel(wi, li, k, r) {
@@ -239,7 +242,7 @@ function settings(msg) {
   <div class=row><button class="${PREFS.btn === .85 ? 'g' : 'd'}" onclick="setPref('btn',.85);settings()">Klein</button><button class="${PREFS.btn === 1 ? 'g' : 'd'}" onclick="setPref('btn',1);settings()">Normal</button><button class="${PREFS.btn === 1.25 ? 'g' : 'd'}" onclick="setPref('btn',1.25);settings()">Groß</button></div>
   <label style="display:block;margin:8px 0"><input type=checkbox ${PREFS.lefty ? 'checked' : ''} style="width:auto" onchange="setPref('lefty',this.checked)"> ✋ Linkshänder-Layout (Tasten spiegeln)</label>
   <label style="display:block;margin:8px 0"><input type=checkbox ${PREFS.saver ? 'checked' : ''} style="width:auto" onchange="setPref('saver',this.checked)"> 🔋 Energiesparmodus (weniger Effekte)</label>
-  <div class=row><button class=d onclick="save.tips={};persistRaw();toast('Hinweise werden wieder angezeigt')">💡 Hinweise zurücksetzen</button></div></div>
+  <div class=row><button class=d data-fs onclick="FS.toggle()">⛶</button><button class=d onclick="save.tips={};persistRaw();toast('Hinweise werden wieder angezeigt')">💡 Hinweise zurücksetzen</button></div></div>
   <div class=card><h3>💾 Spielstand-Code</h3><small>Kopiere den Code und füge ihn auf einem anderen Gerät ein. Funktioniert auch ohne Cloud.</small>
   <textarea id=cd readonly rows=3>${CLOUD.exportCode()}</textarea><div class=row><button onclick="copyCode()">📋 Kopieren</button></div>
   <textarea id=imp rows=3 placeholder="Code hier einfügen"></textarea><div class=row><button class=g onclick="importCode()">⬇️ Importieren</button></div></div>

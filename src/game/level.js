@@ -24,13 +24,14 @@ function levelSpec(wi, li) {
   }
   const r = rng(wi * 500 + li * 13 + 1), kinds = ['day', 'day', 'day', 'dawn', 'dusk', 'night', 'storm'];
   let kind = mods.includes('dark') ? 'night' : kinds[Math.floor(r() * kinds.length)];
+  const act = actOf(wi, li); if (!mods.includes('dark')) kind = ACTS[wi][act].k[Math.floor(r() * 2)];
   if (li === 0) kind = 'day';
   let weather = mods.includes('rain') ? 'rain' : r() < .6 ? WEATHER[wi] : 'none';
   if (kind === 'storm') weather = wi === 3 ? 'snow' : wi === 5 ? 'embers' : 'rain';
   if (li === 0) weather = 'none';
-  const pal = PALS[wi][Math.floor(r() * 3)], o = WORLD_OBJ[wi], st = Math.floor(r() * o.length);
+  r(); const pal = PALS[wi][act], o = WORLD_OBJ[wi], st = act % o.length;
   const wind = mods.includes('wind') ? (r() < .5 ? -1 : 1) * (70 + Math.floor(r() * 50)) : 0;
-  return _specs[key] = { wi, li, name: LV_NAMES[wi][li], style, mods, kind, sky: skyFor(wi, kind), weather, pal,
+  return _specs[key] = { wi, li, act, actName: ACTS[wi][act].n, name: LV_NAMES[wi][li], style, mods, kind, sky: skyFor(wi, kind), weather, pal,
     objs: [o[st], o[(st + 1) % o.length], o[(st + 2) % o.length]].slice(0, 2 + (r() < .5 ? 1 : 0)),
     gap: 150 + Math.floor(r() * 150), sc: .8 + r() * .6, f1: .006 + r() * .006, a1: 35 + r() * 35, f2: .012 + r() * .01, a2: 25 + r() * 25, ph: r() * 6, wind };
 }
@@ -459,7 +460,7 @@ class Run {
     this.end({ win, why, shards: this.shards, coins: this.coins, moon: this.moon, kills: this.kills, rec: this.rec, elapsed: this.t, par: this.par, secrets: this.secrets, bell: !!this.bell, chest: !!this.chest, time: Math.ceil(this.time) });
   }
 
-  drawTile(c, v, tx, ty) {
+  drawTile(c, v, tx, ty, st) {
     const sp = this.sp, wi = this.wi, x = tx * TS, y = ty * TS, h = hash(tx * 73856093 ^ ty * 19349663), pl = PLAT[wi];
     if (v === 2) { c.fillStyle = wi === 3 ? '#9fd8ff' : wi === 5 ? '#ff7a2a' : '#ccd'; for (let k = 0; k < 2; k++) { c.beginPath(); c.moveTo(x + k * 16, y + TS); c.lineTo(x + k * 16 + 8, y + TS / 2); c.lineTo(x + k * 16 + 16, y + TS); c.fill(); } return; }
     if (v === 6) {
@@ -496,9 +497,18 @@ class Run {
       else if (wi === 3) { c.fillStyle = '#fff'; c.beginPath(); c.arc(x + 8 + h % 8, y + 2, 7, Math.PI, 0); c.arc(x + 22, y + 2, 6, Math.PI, 0); c.fill(); c.fillStyle = 'rgba(160,200,235,.6)'; c.fillRect(x + 4, y + 9, 3, 5 + h % 5); c.fillRect(x + 20, y + 9, 3, 4 + h % 6); }
       else if (wi === 2) { c.fillStyle = 'rgba(0,0,0,.1)'; c.fillRect(x + 4, y + 3, 14, 2); c.fillRect(x + 14, y + 6, 12, 1.5); }
       else if (wi === 4) { c.strokeStyle = 'rgba(0,0,0,.28)'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(x + 6, y); c.lineTo(x + 10, y + 8); c.lineTo(x + 8, y + 12); c.stroke(); }
-      else if (wi === 5) { c.fillStyle = `rgba(255,${100 + (h % 80)},30,${.5 + .3 * Math.sin(this.animT * 3 + tx)})`; c.fillRect(x + 4 + h % 12, y + 3, 10, 2); }
+      else if (wi === 5 && !st) { c.fillStyle = `rgba(255,${100 + (h % 80)},30,${.5 + .3 * Math.sin(this.animT * 3 + tx)})`; c.fillRect(x + 4 + h % 12, y + 3, 10, 2); }
     }
     if (ty < ROWS - 1 && this.g[ty + 1][tx] === 0) { c.fillStyle = shade(sp.pal.dirt, -.2); c.beginPath(); c.moveTo(x + 4, y + TS); c.lineTo(x + 14, y + TS + 8 + h % 12); c.lineTo(x + 24, y + TS); c.fill(); }
+  }
+
+  // Statische Kacheln einmalig in Chunk-Bitmaps (16 Spalten) vorrendern; nur brechende Planken und Lava-Glut zeichnen wir live.
+  chunk(ci) {
+    const g = this.g, cache = g._ch || (g._ch = []); if (cache[ci]) return cache[ci];
+    const cn = document.createElement('canvas'); cn.width = 16 * TS; cn.height = ROWS * TS + 24; const cc = cn.getContext('2d');
+    cc.translate(-ci * 16 * TS, 8);
+    for (let ty = 0; ty < ROWS; ty++) for (let tx = ci * 16, e = Math.min(this.cols, tx + 16); tx < e; tx++) { const v = g[ty][tx]; if (v && v !== 5) this.drawTile(cc, v, tx, ty, true); }
+    return cache[ci] = cn;
   }
 
   draw(c) {
@@ -511,9 +521,13 @@ class Run {
     const shx = this.shake > 0 ? Math.round((Math.random() - .5) * this.shake * 26) : 0, shy = this.shake > 0 ? Math.round((Math.random() - .5) * this.shake * 18) : 0;
     c.save(); c.translate(-Math.floor(cam) + shx, shy);
     const tx0 = Math.floor(cam / TS), tx1 = Math.min(this.cols - 1, tx0 + 31);
-    for (let ty = 0; ty < ROWS; ty++) for (let tx = tx0; tx <= tx1; tx++) { const v = this.g[ty][tx]; if (v) this.drawTile(c, v, tx, ty); }
+    for (let ci = Math.floor(tx0 / 16), ce = Math.floor(tx1 / 16); ci <= ce; ci++) { const ch = this.chunk(ci); if (ch) c.drawImage(ch, ci * 16 * TS, -8); }
+    for (let ty = 0; ty < ROWS; ty++) for (let tx = tx0; tx <= tx1; tx++) {
+      const v = this.g[ty][tx]; if (v === 5) this.drawTile(c, v, tx, ty);
+      else if (wi === 5 && v === 1 && !(ty > 0 && this.g[ty - 1][tx] === 1)) { const hh = hash(tx * 73856093 ^ ty * 19349663); c.fillStyle = `rgba(255,${100 + (hh % 80)},30,${.5 + .3 * Math.sin(tt * 3 + tx)})`; c.fillRect(tx * TS + 4 + hh % 12, ty * TS + 3, 10, 2); }
+    }
     c.textAlign = 'center'; c.textBaseline = 'middle';
-    const em = (t, x, y, s) => { c.font = EMF(s); c.fillStyle = '#000'; c.fillText(t, x, y); };
+    const em = (t, x, y, s) => drawEm(c, t, x, y, s);
     for (const s of this.springs) { const q = s.sq > 0 ? 4 : 0; c.fillStyle = '#c9cbe0'; c.fillRect(s.x + 3, s.y + 6, 22, 4); c.strokeStyle = '#9094b4'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(s.x + 6, s.y + 10); c.lineTo(s.x + 11, s.y + 6 + q); c.lineTo(s.x + 17, s.y + 10); c.lineTo(s.x + 22, s.y + 6 + q); c.stroke(); const sg = c.createLinearGradient(0, s.y, 0, s.y + 8); sg.addColorStop(0, '#7af2b0'); sg.addColorStop(1, '#1fae60'); c.fillStyle = sg; c.beginPath(); c.roundRect(s.x, s.y + q, s.w, 8 - q, 4); c.fill(); }
     for (const m of this.movers) { const mg = c.createLinearGradient(0, m.y, 0, m.y + m.h); mg.addColorStop(0, shade(PLAT[wi][0], .2)); mg.addColorStop(1, shade(PLAT[wi][0], -.2)); c.beginPath(); c.roundRect(m.x, m.y, m.w, m.h, 6); c.fillStyle = mg; c.fill(); c.fillStyle = PLAT[wi][1]; c.beginPath(); c.roundRect(m.x, m.y, m.w, 5, [6, 6, 0, 0]); c.fill(); c.strokeStyle = 'rgba(0,0,0,.3)'; c.lineWidth = 1.5; c.beginPath(); c.roundRect(m.x + .5, m.y + .5, m.w - 1, m.h - 1, 6); c.stroke(); c.fillStyle = 'rgba(255,255,255,.5)'; for (let u = 10; u < m.w - 6; u += 18) c.fillRect(m.x + u, m.y + m.h - 6, 8, 2); }
     for (const f of this.fire) if (f.y != null) em('🔥', f.x, f.y, 28);
@@ -618,6 +632,8 @@ class Run {
     c.fillStyle = '#000'; c.fillRect(0, 0, VW, 54 * a); c.fillRect(0, VH - 54 * a, VW, 54 * a);
     c.globalAlpha = a; c.textAlign = 'center'; c.textBaseline = 'middle'; c.lineJoin = 'round';
     c.font = 'bold 40px "Trebuchet MS",sans-serif'; c.strokeStyle = 'rgba(0,0,0,.7)'; c.lineWidth = 7; c.fillStyle = '#fff';
+    c.font = 'bold 20px "Trebuchet MS",sans-serif'; c.fillStyle = '#bfe8ff'; c.lineWidth = 4; c.strokeStyle = 'rgba(0,0,0,.7)'; const at = `Akt ${['I', 'II', 'III'][sp.act]} · ${sp.actName}`; c.strokeText(at, VW / 2, VH / 2 - 76); c.fillText(at, VW / 2, VH / 2 - 76);
+    c.font = 'bold 40px "Trebuchet MS",sans-serif'; c.lineWidth = 7; c.fillStyle = '#fff';
     const t = `${this.Wd.name} ${this.li + 1}: ${sp.name}`; c.strokeText(t, VW / 2, VH / 2 - 30); c.fillText(t, VW / 2, VH / 2 - 30);
     const s = [STYLE_TXT[sp.style], ...sp.mods.map(m => MOD_TXT[m])].filter(Boolean).join(' · ');
     c.font = 'bold 22px "Trebuchet MS",sans-serif'; c.fillStyle = '#ffd54a'; c.lineWidth = 5; c.strokeText(s, VW / 2, VH / 2 + 14); c.fillText(s, VW / 2, VH / 2 + 14);

@@ -33,3 +33,15 @@ Object.assign(W[5].enemies[1], { x: 'shoot', sh: '🔥' }); Object.assign(W[5].e
 SKILLS[0].list.push({ id: 'combo', n: 'Kombo', d: 'Schnelle Treffer +1 Schaden', max: 2, req: 'pow1' });
 SKILLS[2].list.push({ id: 'dash', n: 'Mondsprint', d: 'Dash (💨-Taste)', max: 1, req: 'spd' }, { id: 'glide', n: 'Schwanz-Gleiter', d: 'Jump halten = gleiten', max: 1, req: 'jmp' }, { id: 'wall', n: 'Wandsprung', d: 'An Wänden abspringen', max: 1, req: 'jmp' });
 const PIT = ['#3a8fd8', '#2a7a6a', '#c9a45a', '#7fb8e8', '#cfd6e6', '#ff5a1a'];
+
+// Jede Welt hat drei Akte (je ein Drittel der Level): eigener Name, Tageszeit, Palette und Kulissen-Objekte.
+// So steigert sich eine Welt sichtbar vom hellen Anfang ueber die Daemmerung bis zur Nacht oder zum Sturm vor dem Boss.
+const ACTS = [
+  [{ n: 'Waldrand', k: ['day', 'dawn'] }, { n: 'Tiefer Wald', k: ['day', 'dusk'] }, { n: 'Wurzelreich', k: ['dusk', 'night'] }],
+  [{ n: 'Flussufer', k: ['day', 'dawn'] }, { n: 'Blätterdach', k: ['day', 'dusk'] }, { n: 'Dunkles Herz', k: ['night', 'night'] }],
+  [{ n: 'Dünenmeer', k: ['day', 'dawn'] }, { n: 'Ruinenstadt', k: ['day', 'dusk'] }, { n: 'Sonnenpyramide', k: ['dusk', 'night'] }],
+  [{ n: 'Eisebene', k: ['day', 'dawn'] }, { n: 'Kristallwald', k: ['dusk', 'day'] }, { n: 'Polarnacht', k: ['night', 'storm'] }],
+  [{ n: 'Bergpfad', k: ['day', 'dawn'] }, { n: 'Felswand', k: ['day', 'dusk'] }, { n: 'Sturmgipfel', k: ['storm', 'night'] }],
+  [{ n: 'Aschefeld', k: ['dusk', 'dusk'] }, { n: 'Magmaadern', k: ['dusk', 'night'] }, { n: 'Schlund', k: ['night', 'storm'] }],
+];
+const actOf = (wi, li) => Math.min(2, Math.floor(li * 3 / W[wi].n));

@@ -54,6 +54,9 @@ function renderBG(wi, L) {
   c.save(); c.clip(land); c.fillStyle = T.patch; c.globalAlpha = .55;
   for (let i = 0; i < 28; i++) { c.beginPath(); c.arc(r() * MW, r() * MH, 20 + r() * 55, 0, 7); c.fill(); }
   c.strokeStyle = 'rgba(255,255,255,.12)'; c.lineWidth = 30; c.stroke(land);
+  // Akt-Regionen: weiche Farbfelder je Drittel der Welt
+  const nact = i => i < L.M - 1 ? actOf(wi, L.N[i].t === 'lv' ? L.N[i].i : Math.floor(W[wi].n / 2)) : 2, cen = [0, 1, 2].map(a => { const q = L.P.filter((_, i) => nact(i) === a); return { x: q.reduce((s, p) => s + p.x, 0) / q.length, y: q.reduce((s, p) => s + p.y, 0) / q.length }; });
+  cen.forEach((q, a) => { const pc = PALS[wi][a].top, g = c.createRadialGradient(q.x, q.y, 20, q.x, q.y, 300); g.addColorStop(0, shade(pc, a ? -.05 : .1)); g.addColorStop(1, 'rgba(0,0,0,0)'); c.globalAlpha = .38; c.fillStyle = g; c.fillRect(0, 0, MW, MH); c.globalAlpha = 1; });
   c.restore(); c.lineWidth = 5; c.strokeStyle = T.edge; c.stroke(land);
   c.save(); c.setLineDash([3, 10]); c.lineCap = 'round'; c.lineWidth = 2.5; c.strokeStyle = 'rgba(255,255,255,.75)'; c.stroke(land); c.restore();
 
@@ -72,7 +75,8 @@ function renderBG(wi, L) {
     const x = 30 + r() * (MW - 60), y = 50 + r() * (MH - 80);
     if (!mx.isPointInPath(land, x, y) || lakes.some(l => Math.hypot(l.x - x, (l.y - y) * 1.8) < l.rx + 22)) continue;
     if (segs.some(([a, b]) => segDist(x, y, a, b) < 34) || pts.some(p => Math.hypot(p.x - x, p.y - y) < 52)) continue;
-    dec.push({ x, y, e: T.deco[Math.floor(r() * T.deco.length)], s: 20 + r() * 16 });
+    let nn = 0, nd = 1e9; L.P.forEach((p, i) => { const dd = Math.hypot(p.x - x, p.y - y); if (dd < nd) { nd = dd; nn = i; } });
+    dec.push({ x, y, e: T.deco[(Math.floor(r() * 3) + nact(nn) * 2) % T.deco.length], s: 20 + r() * 16 });
   }
   dec.sort((a, b) => a.y - b.y); c.textAlign = 'center'; c.textBaseline = 'middle';
   for (const lk of lakes) { const lg = c.createRadialGradient(lk.x - lk.rx * .3, lk.y - lk.ry * .4, 4, lk.x, lk.y, lk.rx); lg.addColorStop(0, shade(T.sea, .3)); lg.addColorStop(1, T.sea); c.fillStyle = 'rgba(0,0,0,.12)'; c.beginPath(); c.ellipse(lk.x, lk.y + 4, lk.rx + 4, lk.ry + 4, 0, 0, 7); c.fill(); c.fillStyle = lg; c.strokeStyle = 'rgba(255,255,255,.7)'; c.lineWidth = 3; c.beginPath(); c.ellipse(lk.x, lk.y, lk.rx, lk.ry, 0, 0, 7); c.fill(); c.stroke(); }
@@ -84,6 +88,8 @@ function renderBG(wi, L) {
     if (segs.some(([a, b]) => segDist(x, y, a, b) < 44) || pts.some(p => Math.hypot(p.x - x, p.y - y) < 60)) continue;
     const en = W[wi].enemies.filter(e => e.b !== 'fly'); cn.crit.push({ x, y, n: en[Math.floor(r() * en.length)].n, ph: r() * 6 });
   }
+  c.textAlign = 'center'; c.textBaseline = 'middle';
+  cen.forEach((q, a) => { const nm = 'Akt ' + ['I', 'II', 'III'][a] + ' · ' + ACTS[wi][a].n; c.font = 'bold 14px "Trebuchet MS",sans-serif'; const w = c.measureText(nm).width + 26, ry = Math.min(...L.P.filter((_, i) => nact(i) === a).map(p => p.y)); glassRect(c, q.x - w / 2, ry - 62, w, 26, 13, 'rgba(26,14,58,.5)'); c.fillStyle = '#ffe9a8'; c.fillText(nm, q.x, ry - 49); });
   c.lineCap = c.lineJoin = 'round';
   const road = (p, w) => { c.beginPath(); p.forEach((q, i) => i ? c.lineTo(q.x, q.y) : c.moveTo(q.x, q.y)); c.lineWidth = w; c.stroke(); };
   c.save(); c.translate(0, 4); c.strokeStyle = 'rgba(0,0,0,.2)'; road(L.P, 25); for (const s of L.shops) road([L.P[s.host], s], 19); c.restore();
@@ -195,7 +201,7 @@ function mdraw() {
   glassRect(c, bx, by, bw, 30, 15);
   c.save(); c.beginPath(); c.roundRect(bx + 8, by + 9, bw - 16, 12, 6); c.clip(); c.fillStyle = 'rgba(0,0,0,.3)'; c.fillRect(bx + 8, by + 9, bw - 16, 12);
   const pg = c.createLinearGradient(bx, 0, bx + bw, 0); pg.addColorStop(0, '#ffe08a'); pg.addColorStop(1, '#ff9e5c'); c.fillStyle = pg; c.fillRect(bx + 8, by + 9, (bw - 16) * done / tot, 12); c.restore();
-  c.fillStyle = '#fff'; c.font = 'bold 12px "Trebuchet MS",sans-serif'; c.textAlign = 'center'; c.fillText(done + " / " + tot, bx + bw / 2, by + 15);
+  c.font = 'bold 12px "Trebuchet MS",sans-serif'; c.textAlign = 'center'; c.lineWidth = 3; c.strokeStyle = 'rgba(0,0,0,.55)'; c.strokeText(done + ' / ' + tot, bx + bw / 2, by + 15); c.fillStyle = '#fff'; c.fillText(done + " / " + tot, bx + bw / 2, by + 15);
 }
 
 function mapHit(e) {
