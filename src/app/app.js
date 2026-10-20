@@ -48,7 +48,7 @@ function showTitle() {
   <p>Der Mondverschlinger hat <b>Chey</b> entführt und den Mond verschluckt.<br>Hilf <b>Luna</b>, Chey zu retten!</p>
   <div class="row c"><button class=g onclick="start()">▶ ${save.seen.intro ? 'Weiter' : 'Neues Abenteuer'}</button><button class=r onclick="resetGame()">Neu starten</button></div>
   <div class="row c"><button class=d onclick="album()">📖 Album</button><button class=d onclick="settings()">⚙️ Einstellungen &amp; Cloud</button><button class=d data-fs onclick="FS.toggle()">⛶</button>${save.cleared['5:boss'] ? `<button class=g onclick="startNG()">🔁 Neues Spiel+ (${(save.ng || 0) + 1})</button>` : ''}</div>
-  <small>Handy quer halten · Android/iPhone: im Browser "Zum Startbildschirm"</small><br><small>Version 9</small></div>`;
+  <small>Handy quer halten · Android/iPhone: im Browser "Zum Startbildschirm"</small><br><small>Version 10</small></div>`;
 }
 function start() { if (!save.seen.intro) cine('intro', {}, () => story(STORY.intro, () => { save.seen.intro = 1; persist(); map(); })); else map(); }
 function resetGame() { if (confirm('Gesamten Fortschritt löschen?')) { save = defSave(); persist(); lastAt = null; showTitle(); } }
@@ -189,7 +189,7 @@ function endLevel(wi, li, k, r) {
   save.stats.secrets += r.secrets || 0; save.stats.levels++;
   save.shards += gain; save.coins += Math.round((cg + tb) * (1 + .5 * (save.ng || 0))); save.cleared[key] = 1; save.prog[wi] = Math.max(save.prog[wi], k + 1); persist(); checkAch();
   if (Math.floor(save.shards / 20) > lv0) lines.push('⭐ Neuer Skillpunkt im Mondbaum!');
-  ui.innerHTML = `<div class=card style="text-align:center;margin-top:8vh"><div>${catImg('luna', 90)}</div><h2>✅ ${W[wi].name} ${li + 1} geschafft!</h2><p>🪙 +${cg} · 🌙 +${gain}${first ? '' : ' (Wiederholung)'} · ⏱ ${r.time}s übrig</p>${lines.map(l => `<p>${l}</p>`).join('')}<button class=g onclick="map({from:${k},advance:true})">Weiter ▶</button></div>`;
+  ui.innerHTML = `<div class=card style="text-align:center;margin-top:8vh"><div>${catImg('luna', 90)}</div><h2>✅ ${W[wi].name} ${li + 1} geschafft!</h2><p>🪙 +${cg} · 🌙 +${gain}${first ? '' : ' (Wiederholung)'} · ⏱ ${r.time}s übrig</p>${lines.map(l => `<p>${l}</p>`).join('')}<div class="row c"><button class=g onclick="map({from:${k},advance:true})">Weiter ▶</button><button onclick="play(${wi},${li},${k})">🔄 Nochmal</button><button class=d onclick="map({from:${k}})">🗺️ Karte</button></div></div>`;
 }
 
 // ---------- Pause, Tipps ----------
@@ -243,7 +243,7 @@ function settings(msg) {
   <label style="display:block;margin:8px 0"><input type=checkbox ${PREFS.lefty ? 'checked' : ''} style="width:auto" onchange="setPref('lefty',this.checked)"> ✋ Linkshänder-Layout (Tasten spiegeln)</label>
   <label style="display:block;margin:8px 0"><input type=checkbox ${PREFS.saver ? 'checked' : ''} style="width:auto" onchange="setPref('saver',this.checked)"> 🔋 Energiesparmodus (weniger Effekte)</label>
   <div class=row><button class=d data-fs onclick="FS.toggle()">⛶</button><button class=d onclick="save.tips={};persistRaw();toast('Hinweise werden wieder angezeigt')">💡 Hinweise zurücksetzen</button></div></div>
-  <div class=card><h3>🎮 Controller</h3><small>PS4/PS5-Controller per Bluetooth oder USB verbinden und eine Taste drücken. Stick/Steuerkreuz: laufen · ✕ springen · ◻ schlagen · ○ oder R1: Dash · △ oder Stick runter: Tür/Rohr · Options: Pause. In Menüs: Steuerkreuz wählen, ✕ bestätigen, ○ zurück.</small></div>
+  <div class=card><h3>🎮 Controller</h3><small>PS4/PS5-Controller per Bluetooth oder USB verbinden und eine Taste drücken. Stick/Steuerkreuz: laufen · ✕ springen · ◻ schlagen · ○ oder R1: Dash · △ oder Stick runter: Tür/Rohr · Options: Pause. Options: Menü öffnen (auch auf der Karte). In Menüs und nach dem Level: Steuerkreuz/Stick wählen, ✕ bestätigen, ○ zurück.</small></div>
   <div class=card><h3>💾 Spielstand-Code</h3><small>Kopiere den Code und füge ihn auf einem anderen Gerät ein. Funktioniert auch ohne Cloud.</small>
   <textarea id=cd readonly rows=3>${CLOUD.exportCode()}</textarea><div class=row><button onclick="copyCode()">📋 Kopieren</button></div>
   <textarea id=imp rows=3 placeholder="Code hier einfügen"></textarea><div class=row><button class=g onclick="importCode()">⬇️ Importieren</button></div></div>

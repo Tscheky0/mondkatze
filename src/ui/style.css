@@ -156,6 +156,7 @@ input[type=range]{width:100%;accent-color:var(--moon)}
 #tc.lefty #bu{left:auto;right:calc(14px + 49px*var(--bs))}
 
 html.gp #tc b{opacity:.3}
+html.gp button:focus,html.gp .it:focus,html.gp summary:focus{outline:3px solid var(--moon);outline-offset:3px;transform:scale(1.05);filter:brightness(1.15)}
 html.lowfx *{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 @media (max-height:480px){.title{margin-top:0;padding:14px}.title h1{font-size:36px}}

@@ -45,7 +45,7 @@ function battle(wi, kind, k, noFilm) {
     save.prog[wi] = Math.max(save.prog[wi], k + 1); persist(); checkAch();
     if (Math.floor(save.shards / 20) > lv0) lines.push('⭐ Neuer Skillpunkt im Mondbaum!');
     if (boss && wi < W.length - 1) lines.push(`🗺️ Neue Welt: ${W[wi + 1].emoji} ${W[wi + 1].name}`);
-    ui.innerHTML = `<div class=bt style="background:${B.bg}"><div class=foe>💫</div><h2>${B.n} besiegt!</h2>${lines.map(l => `<p>${l}</p>`).join('')}<button class=g onclick="afterBoss(${wi},'${kind}',${k})">Weiter ▶</button></div>`;
+    ui.innerHTML = `<div class=bt style="background:${B.bg}"><div class=foe>💫</div><h2>${B.n} besiegt!</h2>${lines.map(l => `<p>${l}</p>`).join('')}<div class="row c"><button class=g onclick="afterBoss(${wi},'${kind}',${k})">Weiter ▶</button><button onclick="battle(${wi},'${kind}',${k},1)">🔄 Nochmal</button><button class=d onclick="map({from:${k}})">🗺️ Karte</button></div></div>`;
   }
   function enemyTurn(n) {
     if (st.over) return;

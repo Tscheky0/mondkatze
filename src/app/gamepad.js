@@ -3,7 +3,7 @@
 // Menues: Steuerkreuz/Stick wechseln den Fokus, Kreuz bestaetigt, Kreis geht zurueck. Karte: links/rechts laufen, Kreuz starten.
 const GP = (() => {
   const B = { cross: 0, circle: 1, square: 2, tri: 3, l1: 4, r1: 5, l2: 6, r2: 7, options: 9, up: 12, down: 13, left: 14, right: 15 };
-  const DZ = .4; let pad = null, prev = {}, held = {}, rep = {}, last = 0, active = false;
+  const DZ = .4; let pad = null, prev = {}, held = {}, rep = {}, last = 0, active = false, curMode = '', lock = false;
   const pressed = (g, i) => !!(g.buttons[i] && g.buttons[i].pressed);
   const edge = (k, v) => { const e = v && !prev[k]; prev[k] = v; return e; };
   // Tastendruck mit Wiederholung (fuer Menues): sofort, dann nach .35s alle .12s
@@ -37,9 +37,20 @@ const GP = (() => {
     if (!g) { if (pad) { pad = null; document.documentElement.classList.remove('gp'); } return; }
     if (!pad || pad.index !== g.index) { pad = g; if (window.toast) toast('🎮 Controller verbunden'); }
     const now = ts / 1000, ax = g.axes[0] || 0, ay = g.axes[1] || 0;
+    // Moduswechsel (Menue, Level, Karte): gehaltene Tasten nicht in den neuen Bildschirm uebernehmen, sonst startet z.B. ein Druck auf "Karte" sofort das naechste Level
+    const ms = mode + (typeof paused !== 'undefined' && paused ? 'p' : ''); if (ms !== curMode) { curMode = ms; lock = true; }
+    if (lock) { if (g.buttons.some(b => b.pressed)) { for (const [k, c] of [['l', 'l'], ['r', 'r'], ['j', 'j']]) if (held[k]) { held[k] = false; setIn(c, 0); } return; } lock = false; }
     const L = pressed(g, B.left) || ax < -DZ, R = pressed(g, B.right) || ax > DZ, U = pressed(g, B.up) || ay < -DZ, D = pressed(g, B.down) || ay > DZ + .2;
     const any = g.buttons.some(b => b.pressed) || Math.abs(ax) > DZ || Math.abs(ay) > DZ; if (any && !active) { active = true; document.documentElement.classList.add('gp'); }
-    if (pressed(g, B.options) ? edge('opt', true) : (edge('opt', false), false)) { if (mode === 'play') { if (paused) resumeGame(); else pauseGame(); } }
+    if (edge('opt', pressed(g, B.options))) {
+      if (mode === 'play') { if (paused) resumeGame(); else pauseGame(); }
+      else if (mode === 'map') showTitle();
+      else if (mode === 'ui') {
+        if (document.querySelector('#ui .title')) start();
+        else if (!document.querySelector('#ui .hd')) { const b = document.querySelector('#ui button.g'); if (b) b.click(); }
+        else back();
+      }
+    }
     if (mode === 'play' && !paused) {
       // Gehen/Springen/Schlagen: nur bei Aenderung an das Eingabesystem melden, damit Tastatur und Touch daneben weiter funktionieren
       const set = (k, v, c) => { if (held[k] !== v) { held[k] = v; setIn(c, v ? 1 : 0); } };
@@ -64,6 +75,12 @@ const GP = (() => {
     if (!pad) return; const a = pad.vibrationActuator; if (!a || !a.playEffect) return;
     try { a.playEffect('dual-rumble', { startDelay: 0, duration: Math.min(400, ms || 80), weakMagnitude: .5, strongMagnitude: .7 }).catch(() => { }); } catch (e) { }
   }
+  // Neuer Bildschirm (Level-Ende, Menue, Pause): primaeren Knopf automatisch vorwaehlen, damit Stick/Steuerkreuz sofort greifen
+  const focusPrimary = () => requestAnimationFrame(() => {
+    if (!pad) return; const root = scope(); if (!root) return; const all = focusables(root); if (!all.length || all.includes(document.activeElement)) return;
+    (root.querySelector('button.g:not(:disabled)') || all[0]).focus();
+  });
+  for (const id of ['ui', 'pbox']) { const el = document.getElementById(id); if (el) new MutationObserver(focusPrimary).observe(el, { childList: true }); }
   addEventListener('gamepadconnected', () => { if (window.toast) toast('🎮 Controller verbunden'); });
   addEventListener('gamepaddisconnected', () => { document.documentElement.classList.remove('gp'); if (mode === 'play' && !paused) pauseGame(); });
   requestAnimationFrame(poll);
