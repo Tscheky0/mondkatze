@@ -9,7 +9,7 @@ const ACC = (() => {
   };
   const ERR = { EMAIL_EXISTS: 'Diesen Namen gibt es schon.', EMAIL_NOT_FOUND: 'Name oder Passwort falsch.', INVALID_PASSWORD: 'Name oder Passwort falsch.', INVALID_LOGIN_CREDENTIALS: 'Name oder Passwort falsch.',
     WEAK_PASSWORD: 'Das Passwort braucht mindestens 6 Zeichen.', OPERATION_NOT_ALLOWED: 'E-Mail/Passwort-Anmeldung ist in Firebase nicht aktiviert.', TOO_MANY_ATTEMPTS_TRY_LATER: 'Zu viele Versuche – kurz warten.', INVALID_API_KEY: 'Der API-Key ist falsch.', API_KEY_INVALID: 'Der API-Key ist falsch.' };
-  const errText = j => { const m = String((j && j.error && j.error.message) || '').split(/[ :]/)[0]; return ERR[m] || (m ? 'Fehler: ' + m : 'Anmeldung fehlgeschlagen.'); };
+  const errText = j => { const full = String((j && j.error && j.error.message) || ''), m = full.split(/[ :]/)[0]; return ERR[m] || (/API key|API_KEY/i.test(full) ? 'Der API-Schlüssel ist ungültig – unter „Einrichtung“ prüfen oder auf Standard zurücksetzen.' : full ? 'Fehler: ' + full.slice(0, 120) : 'Anmeldung fehlgeschlagen.'); };
   const mail = n => n.toLowerCase() + '@mondkatze.app';
   const okName = n => /^[A-Za-z0-9_-]{3,16}$/.test(n);
   let user = null, timer = 0;
@@ -83,7 +83,7 @@ function account(msg) {
   const setup = `<details ${ACC.ready() ? '' : 'open'}><summary>Einrichtung (einmalig, kostenlos)</summary>
   <label>Datenbank-URL</label><input id=fu value="${esc(c.url)}" placeholder="https://dein-projekt-default-rtdb.europe-west1.firebasedatabase.app">
   <label>Web-API-Schlüssel</label><input id=fk value="${esc(c.apiKey)}" placeholder="AIza…">
-  <div class=row><button class=d onclick="accSaveCfg()">Speichern</button></div>
+  <div class=row><button class=d onclick="accSaveCfg()">Speichern</button><button class=d onclick="accResetCfg()">Auf Standard zurücksetzen</button></div>
   <small>Der Betreiber des Spiels trägt beides einmal in <code>src/app/config.js</code> ein, dann brauchen Spieler das hier nicht. Anleitung: README, Abschnitt „Online-Funktionen einrichten“.</small></details>`;
   ui.innerHTML = `<div class=hd><h2>👤 Konto</h2><button class=d onclick="showTitle()">Zurück</button></div>${msg ? `<div class=card>${msg}</div>` : ''}
   ${u ? `<div class=card><h3>Angemeldet als ${esc(u.name)}</h3><small>${esc(CLOUD.status || 'Dein Spielstand wird automatisch in deinem Konto gesichert.')}</small>
@@ -95,7 +95,8 @@ function account(msg) {
   <div class=card>${setup}</div>`;
   const pw = $('#ap'); if (pw) pw.type = 'password';
 }
-function accSaveCfg() { ACC.setCfg({ url: $('#fu').value.trim(), apiKey: $('#fk').value.trim() }); account('✅ Gespeichert.'); }
+function accSaveCfg() { const k = $('#fk').value.trim(); if (k && !/^AIza[\w-]{30,}$/.test(k)) return account('⚠️ Der API-Schlüssel sieht falsch aus (er beginnt mit AIza).'); ACC.setCfg({ url: $('#fu').value.trim(), apiKey: k }); account('✅ Gespeichert.'); }
+function accResetCfg() { try { localStorage.removeItem('mk_fb'); } catch (e) { } account('✅ Auf die Standard-Einstellungen des Spiels zurückgesetzt.'); }
 async function accGo(kind) {
   const n = $('#an').value, p = $('#ap').value; ACC.last = n;
   try { await ACC[kind](n, p); if (kind === 'signUp') await ACC.push(); else { const r = await ACC.pull(); if (r && (r.ts || 0) > (save.ts || 0) + 1000 && confirm('In deinem Konto liegt ein neuerer Spielstand. Jetzt laden?')) applySave(r.data); else await ACC.push(); } account(`✅ Willkommen, ${esc(ACC.user.name)}!`); }
