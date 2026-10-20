@@ -50,8 +50,8 @@ function showTitle() {
   ui.innerHTML = `<div class=title><div>${catImg('luna', 130)}${catImg('chey', 100)}</div><h1>Mondkatze</h1>
   <p>Der Mondverschlinger hat <b>Chey</b> entführt und den Mond verschluckt.<br>Hilf <b>Luna</b>, Chey zu retten!</p>
   <div class="row c"><button class=g onclick="start()">▶ ${save.seen.intro ? 'Weiter' : 'Neues Abenteuer'}</button><button class=r onclick="resetGame()">Neu starten</button></div>
-  <div class="row c"><button class=g onclick="daily()">📅 Tageslevel${save.daily.streak ? ' 🔥' + save.daily.streak : ''}</button><button class=d onclick="chars('title')">🐱 Charaktere</button><button class=d onclick="editor('title')">🛠️ Editor</button><button class=d onclick="album()">📖 Album</button><button class=d onclick="settings()">⚙️ Einstellungen &amp; Cloud</button><button class=d data-fs onclick="FS.toggle()">⛶</button>${save.cleared['5:boss'] ? `<button class=g onclick="startNG()">🔁 Neues Spiel+ (${(save.ng || 0) + 1})</button>` : ''}</div>
-  <small>Handy quer halten · Android/iPhone: im Browser "Zum Startbildschirm"</small><br><small>Version 17</small></div>`;
+  <div class="row c"><button class=g onclick="daily()">📅 Tageslevel${save.daily.streak ? ' 🔥' + save.daily.streak : ''}</button><button class=d onclick="chars('title')">🐱 Charaktere</button><button class=d onclick="editor('title')">🛠️ Editor</button><button class=d onclick="album()">📖 Album</button><button class=d onclick="account()">👤 ${ACC.user ? esc(ACC.user.name) : 'Konto'}</button><button class=g onclick="online()">🌐 Online-Koop</button><button class=d onclick="settings()">⚙️ Einstellungen &amp; Cloud</button><button class=d data-fs onclick="FS.toggle()">⛶</button>${save.cleared['5:boss'] ? `<button class=g onclick="startNG()">🔁 Neues Spiel+ (${(save.ng || 0) + 1})</button>` : ''}</div>
+  <small>Handy quer halten · Android/iPhone: im Browser "Zum Startbildschirm"</small><br><small>Version 18</small></div>`;
 }
 function start() { if (!save.seen.intro) cine('intro', {}, () => story(STORY.intro, () => { save.seen.intro = 1; persist(); map(); })); else map(); }
 function resetGame() { if (confirm('Gesamten Fortschritt löschen?')) { save = defSave(); persist(); lastAt = null; showTitle(); } }
@@ -78,7 +78,7 @@ function map(opt) {
 function hud() {
   const Wd = W[save.w];
   $('#hud').innerHTML = `<div><button class=d onclick="swW(-1)">◀</button><span>${Wd.emoji} ${Wd.name}${save.ng ? ' · NG+' + save.ng : ''}</span><button class=d onclick="swW(1)">▶</button></div>
-  <div><span>🪙 ${save.coins}</span><span>🌙 ${save.shards % 20}/20</span><span>⭐ ${pts()}</span><button onclick="bag()">🎒</button><button onclick="tree()">🌟${pts() > 0 ? '❗' : ''}</button><button class=d onclick="chars('map')">🐱</button><button class=d data-fs onclick="FS.toggle()">⛶</button><button class=d onclick="showTitle()">☰</button></div>`;
+  <div><span>🪙 ${save.coins}</span><span>🌙 ${save.shards % 20}/20</span><span>⭐ ${pts()}</span><button onclick="bag()">🎒</button><button onclick="tree()">🌟${pts() > 0 ? '❗' : ''}</button><button class=d onclick="online()">🌐${NET.live ? ' ' + esc(NET.peer) : ''}</button><button class=d onclick="chars('map')">🐱</button><button class=d data-fs onclick="FS.toggle()">⛶</button><button class=d onclick="showTitle()">☰</button></div>`;
 }
 function swW(d) {
   const n = save.w + d; if (n < 0 || n >= W.length) return;
@@ -96,7 +96,11 @@ function arrive(d) {
   const bst = nd.t === 'lv' && save.best[wi + ':' + nd.i], gh = nd.t === 'lv' && loadGhost(wi, nd.i);
   popup(`<div><b>${t}</b><br><small>${s}${bst ? ` · ${MEDAL[bst.m]} Bestzeit ${bst.t}s` : ''}</small></div><button class=g onclick="go(${d.k})">▶ ${d.k < pr ? 'Nochmal' : 'Start'}</button>${gh ? `<button class=d onclick="go(${d.k},true)">👻 Rennen</button>` : ''}`);
 }
-function go(k, race) { lastK = k; const nd = nodes(save.w)[k]; if (nd.t === 'lv') play(save.w, nd.i, k, race); else battle(save.w, nd.t, k); }
+function go(k, race) {
+  if (NET.live && NET.mode === 'guest') return toast('Im Online-Koop wählt der Host das Level');
+  lastK = k; const nd = nodes(save.w)[k];
+  if (nd.t === 'lv') play(save.w, nd.i, k, race); else if (NET.live && NET.mode === 'host') toast('Bosskämpfe gibt es nur solo – trenne zuerst im 🌐-Menü'); else battle(save.w, nd.t, k);
+}
 
 // ---------- Laden ----------
 let curShop = null;
@@ -157,19 +161,24 @@ function play(wi, li, k, race, resume, daily) {
   lastK = k; const S = stats(), used = [];
   for (const [id, txt, f] of [['heart', '🍪 +1 Herz', () => S.maxhp++], ['time', '⏰ +20s', () => S.time += 20], ['shield', '🛡️ Schild', () => S.shield++]])
     if (save.cons[id] > 0) { save.cons[id]--; f(); used.push(txt); }
+  const netHost = !!(NET.live && NET.mode === 'host' && !race && !daily);
+  const chars = netHost ? [save.chars.p1, netGuestChar(save.chars.p1)] : race || !save.chars.coop ? [save.chars.p1] : [save.chars.p1, save.chars.p2];
   persist(); show('play'); $('#bd').style.display = charStats(S, save.chars.p1).dash ? 'flex' : 'none'; paused = false; curLv = { wi, li, k, race, daily };
   AUDIO.play('level', { wi, li, kind: levelSpec(wi, li).kind });
-  run = new Run(wi, li, S, r => daily ? endDaily(daily, r) : endLevel(wi, li, k, r), { race, resume, seed: daily ? daily.seed : 0, chars: race || !save.chars.coop ? [save.chars.p1] : [save.chars.p1, save.chars.p2] });
+  run = new Run(wi, li, S, r => { if (netHost) { NET.hostRun = false; netSend({ t: 'end', r: { ...r, rec: [] } }); } daily ? endDaily(daily, r) : endLevel(wi, li, k, r); }, { race, resume, seed: daily ? daily.seed : 0, chars, net: netHost ? 'host' : undefined });
+  if (netHost) netStartHost(run, wi, li, k);
   if (used.length) run.say(used.join(' · '));
-  last = performance.now(); requestAnimationFrame(loop);
+  last = performance.now(); startLoop();
 }
-const buEl = $('#bu'); let slowN = 0, lastCan = null;
+const buEl = $('#bu'); let slowN = 0, lastCan = null, looping = false;
+const startLoop = () => { if (!looping) { looping = true; requestAnimationFrame(loop); } };
 function loop(t) {
-  const r = run; if (!r || paused) return;
+  const r = run; if (!r || paused) { looping = false; return; }
   const rdt = (t - last) / 1000;
   if (!PREFS.saver) { slowN = rdt > .03 && rdt < .5 ? slowN + 1 : Math.max(0, slowN - 2); if (slowN > 90) { PREFS.saver = true; document.documentElement.classList.add('lowfx'); toast('🔋 Sparmodus automatisch an – läuft flüssiger'); } }
-  r.update(Math.min(.05, rdt) * (window.ADM ? ADM.slow : 1)); last = t; if (r.canUse !== lastCan) { lastCan = r.canUse; buEl.style.opacity = r.canUse ? 1 : .35; }
-  if (run === r) { r.draw(ctx); if (window.ADM) { ADM.tick(); ADM.overlay(ctx, r); } requestAnimationFrame(loop); }
+  if (r.net === 'guest') netGuestInput();
+  r.update(Math.min(.05, rdt) * (window.ADM ? ADM.slow : 1)); last = t; if (r.net === 'host') netHostTick(r, Math.min(.05, rdt)); if (r.canUse !== lastCan) { lastCan = r.canUse; buEl.style.opacity = r.canUse ? 1 : .35; }
+  if (run === r) { r.draw(ctx); if (window.ADM) { ADM.tick(); ADM.overlay(ctx, r); } requestAnimationFrame(loop); } else looping = false;
 }
 const RANKV = { C: 0, B: 1, A: 2, S: 3 }, RCOL = { C: '#b9c6e6', B: '#7cd6ff', A: '#7dff9a', S: '#ffd54a' };
 // Wertung aus Zeit, getroffen werden, Kills, Kombo, Geheimnissen und Sammelstuecken
@@ -181,8 +190,9 @@ function rankOf(r) {
   return pts >= 105 ? 'S' : pts >= 80 ? 'A' : pts >= 55 ? 'B' : 'C';
 }
 function endLevel(wi, li, k, r) {
+  const gst = NET.live && NET.mode === 'guest';
   run = null; show('ui'); AUDIO.stop(); AUDIO.sfx(r.win ? 'win' : 'lose');
-  if (!r.win) { ui.innerHTML = `<div class=card style="text-align:center;margin-top:10vh"><h2>💀 ${r.why}</h2><div class="row c">${r.cpX ? `<button class=g onclick="play(${wi},${li},${k},false,{cpX:${Math.round(r.cpX)},cpY:${Math.round(r.cpY)},cpTime:${Math.round(r.cpTime)}})">🏮 Vom Checkpoint</button>` : ''}<button onclick="play(${wi},${li},${k})">${r.cpX ? 'Von vorn' : 'Nochmal'}</button><button class=d onclick="map({from:${k}})">Karte</button></div></div>`; return; }
+  if (!r.win) { ui.innerHTML = `<div class=card style="text-align:center;margin-top:10vh"><h2>💀 ${r.why}</h2><div class="row c">${r.cpX ? `<button class=g onclick="play(${wi},${li},${k},false,{cpX:${Math.round(r.cpX)},cpY:${Math.round(r.cpY)},cpTime:${Math.round(r.cpTime)}})">🏮 Vom Checkpoint</button>` : ''}<button onclick="play(${wi},${li},${k})">${r.cpX ? 'Von vorn' : 'Nochmal'}</button><button class=d onclick="map({from:${k}})">Karte</button></div></div>`; if (gst) netGuestWait(); return; }
   const key = wi + ':' + li, first = !save.cleared[key], lv0 = Math.floor(save.shards / 20), lines = [];
   let gain = first ? r.shards : Math.ceil(r.shards * .25);
   const cg = first ? r.coins : Math.ceil(r.coins * .5), tb = Math.floor(r.time / 5);
@@ -196,7 +206,7 @@ function endLevel(wi, li, k, r) {
   }
   const used = Math.round(r.elapsed * 10) / 10, medal = used <= r.par ? 'gold' : used <= r.par * 1.5 ? 'silver' : 'bronze', bst = save.best[key];
   lines.push(`${MEDAL[medal]} ${used}s (Gold bis ${Math.round(r.par)}s)`);
-  if (!bst || used < bst.t) { save.best[key] = { t: used, m: medal }; saveGhost(wi, li, r.rec); if (bst) lines.push('🏁 Neue Bestzeit! Im Rennen jagt dich jetzt deine Geister-Katze.'); }
+  if (!bst || used < bst.t) { save.best[key] = { t: used, m: medal }; if (r.rec && r.rec.length > 6) saveGhost(wi, li, r.rec); if (bst) lines.push('🏁 Neue Bestzeit! Im Rennen jagt dich jetzt deine Geister-Katze.'); }
   const rk = rankOf(r), rko = save.rank[key]; if (!rko || RANKV[rk] > RANKV[rko]) { save.rank[key] = rk; if (rko) lines.push('🏅 Neuer Bestrang!'); }
   lines.push(`💥 ${r.hits} Treffer erhalten`);
   for (const n in r.kills) save.stats.kills[n] = (save.stats.kills[n] || 0) + r.kills[n];
@@ -204,6 +214,7 @@ function endLevel(wi, li, k, r) {
   save.shards += gain; save.coins += Math.round((cg + tb) * (1 + .5 * (save.ng || 0))); save.cleared[key] = 1; save.prog[wi] = Math.max(save.prog[wi], k + 1); persist(); checkAch();
   if (Math.floor(save.shards / 20) > lv0) lines.push('⭐ Neuer Skillpunkt im Mondbaum!');
   ui.innerHTML = `<div class=card style="text-align:center;margin-top:8vh"><div>${catImg('luna', 90)}</div><h2>✅ ${W[wi].name} ${li + 1} geschafft!</h2><div class=rank style="color:${RCOL[rk]}">${rk}</div><p>🪙 +${cg} · 🌙 +${gain}${first ? '' : ' (Wiederholung)'} · ⏱ ${r.time}s übrig</p>${lines.map(l => `<p>${l}</p>`).join('')}<div class="row c"><button class=g onclick="map({from:${k},advance:true})">Weiter ▶</button><button onclick="play(${wi},${li},${k})">🔄 Nochmal</button><button class=d onclick="map({from:${k}})">🗺️ Karte</button></div></div>`;
+  if (gst) netGuestWait();
 }
 
 // ---------- Tageslevel: pro Tag ein festes Level mit eigener Bestzeit und Serie ----------
@@ -230,7 +241,7 @@ function playCustom(d, from) {
   CUST = d; const S = stats(); persist(); show('play'); $('#bd').style.display = charStats(S, save.chars.p1).dash ? 'flex' : 'none'; paused = false; curLv = { wi: d.w, li: 3, k: -1, custom: d, from };
   AUDIO.play('level', { wi: d.w, li: 3, kind: d.kind });
   run = new Run(d.w, 3, S, r => endCustom(d, r, from), { custom: d, chars: save.chars.coop ? [save.chars.p1, save.chars.p2] : [save.chars.p1] });
-  last = performance.now(); requestAnimationFrame(loop);
+  last = performance.now(); startLoop();
 }
 function endCustom(d, r, from) {
   run = null; show('ui'); AUDIO.stop(); AUDIO.sfx(r.win ? 'win' : 'lose'); const used = Math.round(r.elapsed * 10) / 10;
@@ -239,16 +250,18 @@ function endCustom(d, r, from) {
 
 // ---------- Pause, Tipps ----------
 function pauseGame() {
-  if (!run || paused || run.done || mode !== 'play') return; paused = true; AUDIO.duck(.25); IN.l = IN.r = IN.j = 0;
+  if (!run || paused || run.done || mode !== 'play') return;
+  if (run.net) { if (confirm(run.net === 'host' ? 'Das Level beenden und zur Karte?' : 'Das Online-Spiel verlassen?')) { if (run.net === 'host') quitLevel(); else netLeave(); } return; }
+  paused = true; AUDIO.duck(.25); IN.l = IN.r = IN.j = 0;
   $('#pbox').innerHTML = `<h2>⏸ Pause</h2><button class=g onclick="resumeGame()">▶ Weiter</button><button onclick="restartLevel()">🔄 Level neu starten</button>
   <label>🎵 Musik</label><input type=range min=0 max=1 step=.05 value="${PREFS.music}" oninput="setPref('music',+this.value)">
   <label>🔊 Effekte</label><input type=range min=0 max=1 step=.05 value="${PREFS.sfx}" oninput="setPref('sfx',+this.value)">
   <button class=d onclick="quitLevel()">🗺️ Zur Karte</button>`;
   $('#pause').style.display = 'flex';
 }
-function resumeGame() { if (!paused) return; paused = false; $('#pause').style.display = 'none'; AUDIO.duck(1); last = performance.now(); requestAnimationFrame(loop); }
+function resumeGame() { if (!paused) return; paused = false; $('#pause').style.display = 'none'; AUDIO.duck(1); last = performance.now(); startLoop(); }
 function restartLevel() { $('#pause').style.display = 'none'; paused = false; AUDIO.duck(1); run = null; if (curLv.custom) return playCustom(curLv.custom, curLv.from); play(curLv.wi, curLv.li, curLv.k, curLv.race, null, curLv.daily); }
-function quitLevel() { $('#pause').style.display = 'none'; paused = false; AUDIO.duck(1); run = null; AUDIO.stop(); if (curLv.custom) { if (curLv.from === 'editor') editor(); else showTitle(); } else if (curLv.daily) showTitle(); else map({ from: curLv.k }); }
+function quitLevel() { if (NET.hostRun) { NET.hostRun = false; netSend({ t: 'abort' }); } $('#pause').style.display = 'none'; paused = false; AUDIO.duck(1); run = null; AUDIO.stop(); if (curLv.custom) { if (curLv.from === 'editor') editor(); else showTitle(); } else if (curLv.daily) showTitle(); else map({ from: curLv.k }); }
 function setPref(k, v) { PREFS[k] = v; savePrefs(); }
 const TIPS = {
   basics: '🐱 ◀ ▶ laufen · ⤒ springen · ⚔️ schlagen. Sammle 🌙 und 🪙 – das Ziel ist die 🏁!',
@@ -345,7 +358,7 @@ function setInto(T, c, v) { if (c === 'l') T.l = v; else if (c === 'r') T.r = v;
 const setIn = (c, v) => setInto(IN, c, v), setIn2 = (c, v) => setInto(IN2, c, v);
 // Lokaler Koop auf einer Tastatur: Spieler 1 links (WASD + F/G), Spieler 2 rechts (Pfeile + Enter/Shift rechts)
 const K1 = { KeyA: 'l', KeyD: 'r', KeyW: 'j', Space: 'j', KeyS: 'use', KeyF: 'a', KeyG: 'dash', ShiftLeft: 'dash' }, K2 = { ArrowLeft: 'l', ArrowRight: 'r', ArrowUp: 'j', ArrowDown: 'use', Enter: 'a', Slash: 'a', ShiftRight: 'dash' };
-const coopKeys = () => save.chars.coop && mode === 'play';
+const coopKeys = () => save.chars.coop && mode === 'play' && !NET.live;
 const typing = e => e.target && /^(INPUT|TEXTAREA)$/.test(e.target.tagName);
 addEventListener('keydown', e => {
   if (typing(e)) return;
@@ -376,5 +389,5 @@ if ('serviceWorker' in navigator && location.protocol.startsWith('http')) naviga
 showTitle();
 // Geteilter Level-Link (?lvl=...) direkt anbieten
 try { const q = new URLSearchParams(location.search).get('lvl'); if (q) { const d = edDecode(q); history.replaceState(null, '', location.pathname); setTimeout(() => { if (confirm('Ein geteiltes Level wurde gefunden. Jetzt spielen?')) playCustom(d, 'link'); }, 700); } } catch (e) { setTimeout(() => toast('⚠️ Der Level-Link ist ungültig'), 600); }
-CLOUD.boot();
+CLOUD.boot(); ACC.boot();
 applyPrefs();

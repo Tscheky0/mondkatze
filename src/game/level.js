@@ -1,8 +1,9 @@
 // Jump&Run-Engine: jedes Level hat Stil, Mechaniken, Himmel, Palette und Kulisse (levelSpec).
 const TS = 32, ROWS = 17, VW = 960, VH = 544;
-const snd = n => { if (window.AUDIO) AUDIO.sfx(n); };
+const snd = n => { if (typeof AUDIO !== 'undefined') AUDIO.sfx(n); if (typeof NET !== 'undefined' && NET.hostRun) NET.ev.push(['n', n]); };
 const IN = { l: 0, r: 0, j: 0, jb: 0, ap: 0 }; // Eingabe Spieler 1, wird von app.js gesetzt
 const IN2 = { l: 0, r: 0, j: 0, jb: 0, ap: 0, dash: 0, use: 0 }; // Eingabe Spieler 2 (lokaler Koop)
+const NETIN = { l: 0, r: 0, j: 0, jb: 0, ap: 0, dash: 0, use: 0 }; // Eingabe des Online-Mitspielers (beim Host)
 // Charakterwerte: Luna ausgewogen, Minsch schneller + Wandsprung, Chey Dash ab Start + sieht im Dunkeln weiter
 function charStats(S, id) {
   const s = Object.assign({}, S);
@@ -197,8 +198,9 @@ class Run {
     this.boost = { hp: 0, dmg: 0, spd: 0, jmp: 0 };
     const s0 = this.spots[0];
     this.chars = (opts.chars && opts.chars.length ? opts.chars : ['luna']).slice(0, 2);
-    this.players = this.chars.map((id, i) => { const x = TS * (2 + i * 1.3), y = s0.y * TS - 30; return { id, idx: i, I: i ? IN2 : IN, S: charStats(S, id), x, y, w: 22, h: 30, vx: 0, vy: 0, on: false, coy: 0, face: 1, hp: S.maxhp, inv: 0, cd: 0, swing: 0, sid: 0, jumps: 0, sh: S.shield, dashT: 0, dcd: 0, wjT: 0, wall: 0, ko: false, koT: 0, safe: { x, y } }; });
+    this.players = this.chars.map((id, i) => { const x = TS * (2 + i * 1.3), y = s0.y * TS - 30; return { id, idx: i, I: opts.net === 'guest' ? (i ? IN : { l: 0, r: 0, j: 0, jb: 0, ap: 0, dash: 0, use: 0 }) : i ? (opts.net === 'host' ? NETIN : IN2) : IN, S: charStats(S, id), x, y, w: 22, h: 30, vx: 0, vy: 0, on: false, coy: 0, face: 1, hp: S.maxhp, inv: 0, cd: 0, swing: 0, sid: 0, jumps: 0, sh: S.shield, dashT: 0, dcd: 0, wjT: 0, wall: 0, ko: false, koT: 0, safe: { x, y } }; });
     this.p = this.players[0]; this.coop = this.players.length > 1;
+    this.net = opts.net; this.guest = opts.net === 'guest'; this.me = 1; if (opts.net) { this.pan = 0; this.doors = []; } // Online: kein Vorspann, keine Geheimraeume
     this.ent = []; this.shots = []; this.fx = []; this.pick = []; this.drops = []; this.cr = []; this.warn = []; this.rocks = [];
     this.nextDrop = 18; this.regenT = 0; this.cam = 0; this.msg = ''; this.msgT = 0; this.bt = 3;
     this.parts = []; this.shake = 0; this.combo = 0; this.comboT = 0; this.eshots = []; this.runT = 0; this.wasOn = false; this.room = null; this.fade = 0; this.secrets = 0; this.canUse = false;
@@ -269,16 +271,17 @@ class Run {
     }
   }
 
-  puff(x, y, n, col) { if (PREFS.saver) n = Math.ceil(n * .4); for (let i = 0; i < n; i++) this.parts.push({ x, y, vx: (Math.random() - .5) * 90, vy: -Math.random() * 60, g: 160, l: .4 + Math.random() * .3, m: .7, s: 2 + Math.random() * 3, c: col }); }
-  spark(x, y, n, col) { if (PREFS.saver) n = Math.ceil(n * .4); for (let i = 0; i < n; i++) { const a = Math.random() * 6.28, v = 60 + Math.random() * 120; this.parts.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 40, g: 300, l: .35 + Math.random() * .3, m: .6, s: 2 + Math.random() * 2, c: col }); } }
+  puff(x, y, n, col) { if (this.net === 'host') NET.ev.push(['u', Math.round(x), Math.round(y), n, col]); if (PREFS.saver) n = Math.ceil(n * .4); for (let i = 0; i < n; i++) this.parts.push({ x, y, vx: (Math.random() - .5) * 90, vy: -Math.random() * 60, g: 160, l: .4 + Math.random() * .3, m: .7, s: 2 + Math.random() * 3, c: col }); }
+  spark(x, y, n, col) { if (this.net === 'host') NET.ev.push(['s', Math.round(x), Math.round(y), n, col]); if (PREFS.saver) n = Math.ceil(n * .4); for (let i = 0; i < n; i++) { const a = Math.random() * 6.28, v = 60 + Math.random() * 120; this.parts.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 40, g: 300, l: .35 + Math.random() * .3, m: .6, s: 2 + Math.random() * 2, c: col }); } }
   say(t) { this.msg = t; this.msgT = 2.2; }
   float(x, y, txt, c) { this.fx.push({ x, y, txt, c: c || '#fff', t: .9 }); }
   dmgOut() { return 1 + this.S.dmg + this.boost.dmg + (this.comboT > 0 ? this.combo : 0); }
 
   hurt(d, who) {
+    if (this.guest) return;
     const p = this.p; if (p.inv > 0 || this.done || p.ko || (window.ADM && ADM.god)) return;
     if (p.sh > 0) { p.sh--; p.inv = 1; this.float(p.x, p.y - 10, 'Schild!', '#8cf'); return; }
-    this.hits++; p.hp -= d; p.inv = 1.3; this.shake = .3; snd('hurt'); if (window.vib) vib(70); this.spark(p.x + 11, p.y + 15, 10, '#ff5a5a'); p.vy = -300; p.vx = -p.face * 160; this.float(p.x, p.y - 10, '-' + d, '#f55');
+    this.hits++; p.hp -= d; p.inv = 1.3; this.shake = .3; snd('hurt'); if (typeof vib !== 'undefined') vib(70); this.spark(p.x + 11, p.y + 15, 10, '#ff5a5a'); p.vy = -300; p.vx = -p.face * 160; this.float(p.x, p.y - 10, '-' + d, '#f55');
     if (p.hp <= 0) {
       if (this.S.rev > 0) { this.S.rev--; p.hp = Math.ceil(this.S.maxhp / 2); this.say('Phönixfeder! Wiederbelebt'); }
       else if (this.players.some(q => q !== p && !q.ko)) { p.ko = true; p.koT = 6; p.hp = 0; p.vx = 0; this.spark(p.x + 11, p.y + 15, 14, '#ffffff'); this.say('💫 ' + CHAR[p.id].n + ' ist k.o. – kommt in 6s zurück'); }
@@ -287,6 +290,7 @@ class Run {
   }
 
   hit(e, d) {
+    if (this.guest) return;
     const crit = Math.random() < this.S.crit; if (crit) d = Math.ceil(d * 1.5);
     e.hp -= d; e.fl = .15; this.shake = Math.max(this.shake, .06); snd('hit'); this.spark(e.x + 12, e.y + 10, 6, '#ffffff'); e.vx = this.p.face * 120; this.float(e.x, e.y - 8, (crit ? '★' : '') + d, crit ? '#ff0' : '#fff');
     if (e.hp <= 0) {
@@ -343,6 +347,7 @@ class Run {
   lead() { let best = this.players[0]; for (const q of this.players) if (!q.ko && (best.ko || q.x > best.x)) best = q; return best; }
 
   update(dt) {
+    if (this.guest) return this.updateGuest(dt);
     if (this.done) return;
     this.animT += dt;
     const P = this.players;

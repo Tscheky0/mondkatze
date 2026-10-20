@@ -66,7 +66,7 @@ const GP = (() => {
     }
     if (mode === 'play' && !paused) {
       // Gehen/Springen/Schlagen: nur bei Aenderung an das Eingabesystem melden, damit Tastatur und Touch daneben weiter funktionieren
-      drive(g, held, 'a', setIn); if (g2 && save.chars.coop) drive(g2, held2, 'b', setIn2);
+      drive(g, held, 'a', setIn); if (g2 && save.chars.coop && !NET.live) drive(g2, held2, 'b', setIn2);
     } else {
       if (held.l) { held.l = false; setIn('l', 0); } if (held.r) { held.r = false; setIn('r', 0); } if (held.j) { held.j = false; setIn('j', 0); }
       if (held2.l) { held2.l = false; setIn2('l', 0); } if (held2.r) { held2.r = false; setIn2('r', 0); } if (held2.j) { held2.j = false; setIn2('j', 0); }

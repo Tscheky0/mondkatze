@@ -9,7 +9,7 @@ const CLOUD = {
     return Array.from(r, v => a[v % a.length]).join('').replace(/(.{4})(?=.)/g, '$1-');
   },
   validSave(o) {
-    return o && typeof o === 'object' && Array.isArray(o.prog) && o.prog.length === 6 && o.prog.every(n => Number.isInteger(n) && n >= 0 && n < 40)
+    return o && typeof o === 'object' && Array.isArray(o.prog) && o.prog.length >= 6 && o.prog.length <= 12 && o.prog.every(n => Number.isInteger(n) && n >= 0 && n < 40)
       && Number.isFinite(o.shards) && Number.isFinite(o.coins) && o.skills && typeof o.skills === 'object' && o.own && typeof o.own === 'object' && Array.isArray(o.load);
   },
   exportCode() { return 'MK1.' + btoa(unescape(encodeURIComponent(JSON.stringify(save)))); },
@@ -43,6 +43,7 @@ const CLOUD = {
     return r;
   },
   touch() { // nach jedem lokalen Speichern: verzoegert hochladen
+    if (typeof ACC !== 'undefined') ACC.touch();
     const c = CLOUD.cfg(); if (window.ADMIN || !c.auto || !c.url || !c.code) return;
     clearTimeout(CLOUD.timer); CLOUD.timer = setTimeout(() => CLOUD.push().catch(e => { CLOUD.status = '⚠️ ' + e.message; }), 4000);
   },

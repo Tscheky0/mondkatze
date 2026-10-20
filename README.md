@@ -49,3 +49,31 @@ src/app/              Anwendung
   (Daten → Audio → Zeichnen → Spiel → Anwendung). Neue Datei: dort eintragen **und** in `sw.js` (Liste `F`).
 - Nach Änderungen die Versionsnummer `?v=` in `index.html` und `mondkatze-vN` in `sw.js` erhöhen, sonst zeigt der Browser alte Dateien.
 - Spielstand: `localStorage['mondkatze']` (Admin: `mondkatze_admin`), Einstellungen: `mk_prefs`, Geister: `mk_ghost_*`.
+
+## Online-Funktionen einrichten (Konten + Online-Koop, kostenlos)
+
+Das Spiel braucht dafür ein eigenes Firebase-Projekt (Spark-Tarif, 0 €). Einmalig:
+
+1. Auf console.firebase.google.com ein Projekt anlegen.
+2. Build → Authentication → Anmeldemethode → **E-Mail/Passwort** aktivieren.
+3. Build → Realtime Database → Datenbank erstellen (Region Europa).
+4. In der Datenbank den Tab **Regeln** öffnen, diesen Text einfügen und veröffentlichen:
+
+```
+{
+  "rules": {
+    "users": { "$uid": { ".read": "auth.uid === $uid", ".write": "auth.uid === $uid" } },
+    "rooms": { "$room": { ".read": "auth != null", ".write": "auth != null" } },
+    "saves": { "$code": { ".read": true, ".write": true, ".validate": "newData.hasChildren(['ts','data'])" } }
+  }
+}
+```
+
+5. Projekteinstellungen → Allgemein → **Web-API-Schlüssel** kopieren, dazu die **Datenbank-URL**. Beides in `src/app/config.js` eintragen, committen und pushen. Dann können alle Spieler Konten anlegen. (Alternativ jeder Spieler selbst im Spiel unter Konto → Einrichtung.)
+
+Wie es funktioniert:
+- **Konto** = Spielername + Passwort. Der Spielstand liegt in `users/<uid>/save` und ist nur für das eigene Konto lesbar. Beide Spieler eines Koop-Levels speichern ihren Fortschritt im eigenen Konto.
+- **Online-Koop** = ein Spieler erstellt einen Raum (5-stelliger Code), der andere tritt bei. Die Geräte verbinden sich direkt per WebRTC; Firebase vermittelt nur das Finden. Der Host wählt das Level, rechnet das Spiel und schickt Schnappschüsse; der Gast bewegt seine Katze selbst und wird abgeglichen.
+- Bei strengen Netzen (manche Mobilfunk-Anbieter, Firmen-WLAN) kann die direkte Verbindung scheitern.
+
+Ohne Firebase testen: `node tools/mock-firebase.js` startet einen lokalen Nachbau (Port 9099), siehe Kommentar in der Datei.
