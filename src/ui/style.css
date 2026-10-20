@@ -148,10 +148,6 @@ input[type=range]{width:100%;accent-color:var(--moon)}
 #bj{right:14px}
 #bd{right:calc(14px + 196px*var(--bs));display:none}
 #tc #bu{left:calc(14px + 49px*var(--bs));bottom:calc(18px + 98px*var(--bs));width:calc(68px*var(--bs));height:calc(68px*var(--bs));font-size:calc(26px*var(--bs));opacity:.45}
-/* Spieler 2 (lokaler Koop am Touch-Geraet): zweite Tastenreihe darueber, rosa getoent */
-#tc .p2{display:none;bottom:calc(24px + 92px*var(--bs));width:calc(70px*var(--bs));height:calc(70px*var(--bs));font-size:calc(28px*var(--bs));border-color:#ff8fb8cc;background:radial-gradient(circle at 32% 26%,#ffd0e2aa,#ff8fb833 60%,#ff8fb81a)}
-#tc.co .p2{display:flex}#tc.co #bu{display:none}
-#b2l{left:14px}#b2r{left:calc(14px + 80px*var(--bs))}#b2j{right:14px}#b2a{right:calc(14px + 80px*var(--bs))}
 /* left-handed mirror */
 #tc.lefty #bl{left:auto;right:calc(14px + 98px*var(--bs))}
 #tc.lefty #br{left:auto;right:14px}

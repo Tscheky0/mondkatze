@@ -52,7 +52,7 @@ const GP = (() => {
     const now = ts / 1000, ax = g.axes[0] || 0, ay = g.axes[1] || 0;
     // Moduswechsel (Menue, Level, Karte): gehaltene Tasten nicht in den neuen Bildschirm uebernehmen, sonst startet z.B. ein Druck auf "Karte" sofort das naechste Level
     const ms = mode + (typeof paused !== 'undefined' && paused ? 'p' : ''); if (ms !== curMode) { curMode = ms; lock = true; hudMode = false; }
-    if (lock) { if (g.buttons.some(b => b.pressed)) { for (const [k, c] of [['l', 'l'], ['r', 'r'], ['j', 'j']]) { if (held[k]) { held[k] = false; setIn(c, 0); } if (held2[k]) { held2[k] = false; setIn2(c, 0); } } return; } lock = false; }
+    if (lock) { if (g.buttons.some(b => b.pressed)) { for (const [k, c] of [['l', 'l'], ['r', 'r'], ['j', 'j']]) if (held[k]) { held[k] = false; setIn(c, 0); } return; } lock = false; }
     const L = pressed(g, B.left) || ax < -DZ, R = pressed(g, B.right) || ax > DZ, U = pressed(g, B.up) || ay < -DZ, D = pressed(g, B.down) || ay > DZ + .2;
     const any = g.buttons.some(b => b.pressed) || Math.abs(ax) > DZ || Math.abs(ay) > DZ; if (any && !active) { active = true; document.documentElement.classList.add('gp'); }
     if (edge('opt', pressed(g, B.options) || (g2 && pressed(g2, B.options)))) {
@@ -66,10 +66,9 @@ const GP = (() => {
     }
     if (mode === 'play' && !paused) {
       // Gehen/Springen/Schlagen: nur bei Aenderung an das Eingabesystem melden, damit Tastatur und Touch daneben weiter funktionieren
-      drive(g, held, 'a', setIn); if (g2 && save.chars.coop && !NET.live) drive(g2, held2, 'b', setIn2);
+      drive(g, held, 'a', setIn);
     } else {
       if (held.l) { held.l = false; setIn('l', 0); } if (held.r) { held.r = false; setIn('r', 0); } if (held.j) { held.j = false; setIn('j', 0); }
-      if (held2.l) { held2.l = false; setIn2('l', 0); } if (held2.r) { held2.r = false; setIn2('r', 0); } if (held2.j) { held2.j = false; setIn2('j', 0); }
       if (mode === 'map' && MV) {
         if (hudMode) {
           setHint('◀ ▶ wählen · ✕ öffnen · ○ zurück zur Karte');

@@ -125,9 +125,13 @@ Run.prototype.updateGuest = function (dt) {
   for (const f of this.fx) { f.t -= dt; f.y -= 30 * dt; } this.fx = this.fx.filter(f => f.t > 0);
   const me = this.players[this.me], rm = this.players[1 - this.me], k = Math.min(1, dt * 14);
   if (!me.ko) { this.p = me; this.stepPlayer(me, dt); }
-  if (me.tx != null) { // sanft zum Host-Stand zurueckkorrigieren
-    const dx = me.tx - me.x, dy = me.ty - me.y, d = Math.hypot(dx, dy);
-    if (d > 130 || me.ko) { me.x = me.tx; me.y = me.ty; } else if (d > 40) { me.x += dx * Math.min(1, dt * 8); me.y += dy * Math.min(1, dt * 8); }
+  if (me.tx != null) {
+    // Eigene Katze wird sofort selbst bewegt (Vorhersage). Der Host-Stand ist durch die Netzwerk-Laufzeit veraltet:
+    // Waehrend du laeuft/springst, korrigieren wir nur bei grossen Abweichungen; im Stand gleichen wir sanft an.
+    const dx = me.tx - me.x, dy = me.ty - me.y, d = Math.hypot(dx, dy), moving = IN.l || IN.r || !me.on || Math.abs(me.vx) > 20;
+    if (me.ko || d > 260) { me.x = me.tx; me.y = me.ty; me.vx = me.vy = 0; }
+    else if (!moving && d > 6) { me.x += dx * Math.min(1, dt * 6); me.y += dy * Math.min(1, dt * 6); }
+    else if (d > 150) { me.x += dx * Math.min(1, dt * 2); me.y += dy * Math.min(1, dt * 2); }
   }
   if (rm.tx != null) { const dx = rm.tx - rm.x, dy = rm.ty - rm.y; if (Math.hypot(dx, dy) > 200) { rm.x = rm.tx; rm.y = rm.ty; } else { rm.x += dx * k; rm.y += dy * k; } }
   const ld = this.lead(); this.p = ld; this.cam = clamp(ld.x - VW * .4, 0, this.cols * TS - VW);

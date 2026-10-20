@@ -4,6 +4,7 @@ const defSave = () => ({ w: 0, prog: [0, 0, 0, 0, 0, 0, 0], shards: 0, coins: 0,
 const SAVE_KEY = window.ADMIN ? 'mondkatze_admin' : 'mondkatze';
 let save; try { save = Object.assign(defSave(), JSON.parse(localStorage.getItem(SAVE_KEY))); } catch (e) { save = defSave(); }
 while (save.prog.length < W.length) save.prog.push(0);
+save.chars.coop = false; // lokaler 2-Spieler-Modus entfernt: zu zweit nur online
 const cheyOpen = () => (save.ng || 0) >= 1; // Chey wird erst mit Neues Spiel+ spielbar
 if (!cheyOpen()) { if (save.chars.p1 === 'chey') save.chars.p1 = save.chars.p2 === 'luna' ? 'minsch' : 'luna'; if (save.chars.p2 === 'chey') save.chars.p2 = save.chars.p1 === 'minsch' ? 'luna' : 'minsch'; }
 const persistRaw = () => { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) { } };
@@ -51,7 +52,7 @@ function showTitle() {
   <p>Der Mondverschlinger hat <b>Chey</b> entführt und den Mond verschluckt.<br>Hilf <b>Luna</b>, Chey zu retten!</p>
   <div class="row c"><button class=g onclick="start()">▶ ${save.seen.intro ? 'Weiter' : 'Neues Abenteuer'}</button><button class=r onclick="resetGame()">Neu starten</button></div>
   <div class="row c"><button class=g onclick="daily()">📅 Tageslevel${save.daily.streak ? ' 🔥' + save.daily.streak : ''}</button><button class=d onclick="chars('title')">🐱 Charaktere</button><button class=d onclick="editor('title')">🛠️ Editor</button><button class=d onclick="album()">📖 Album</button><button class=d onclick="account()">👤 ${ACC.user ? esc(ACC.user.name) : 'Konto'}</button><button class=g onclick="online()">🌐 Online-Koop</button><button class=d onclick="settings()">⚙️ Einstellungen &amp; Cloud</button><button class=d data-fs onclick="FS.toggle()">⛶</button>${save.cleared['5:boss'] ? `<button class=g onclick="startNG()">🔁 Neues Spiel+ (${(save.ng || 0) + 1})</button>` : ''}</div>
-  <small>Handy quer halten · Android/iPhone: im Browser "Zum Startbildschirm"</small><br><small>Version 22</small></div>`;
+  <small>Handy quer halten · Android/iPhone: im Browser "Zum Startbildschirm"</small><br><small>Version 23</small></div>`;
 }
 function start() { if (!save.seen.intro) cine('intro', {}, () => story(STORY.intro, () => { save.seen.intro = 1; persist(); map(); })); else map(); }
 function resetGame() { if (confirm('Gesamten Fortschritt löschen?')) { save = defSave(); persist(); lastAt = null; showTitle(); } }
@@ -162,9 +163,8 @@ function play(wi, li, k, race, resume, daily) {
   for (const [id, txt, f] of [['heart', '🍪 +1 Herz', () => S.maxhp++], ['time', '⏰ +20s', () => S.time += 20], ['shield', '🛡️ Schild', () => S.shield++]])
     if (save.cons[id] > 0) { save.cons[id]--; f(); used.push(txt); }
   const netHost = !!(NET.live && NET.mode === 'host' && !race && !daily);
-  const chars = netHost ? [save.chars.p1, netGuestChar(save.chars.p1)] : race || !save.chars.coop ? [save.chars.p1] : [save.chars.p1, save.chars.p2];
+  const chars = netHost ? [save.chars.p1, netGuestChar(save.chars.p1)] : [save.chars.p1];
   persist(); show('play'); $('#bd').style.display = charStats(S, save.chars.p1).dash ? 'flex' : 'none'; paused = false; curLv = { wi, li, k, race, daily };
-  tc.classList.toggle('co', chars.length > 1 && !netHost);
   AUDIO.play('level', { wi, li, kind: levelSpec(wi, li).kind });
   run = new Run(wi, li, S, r => { if (netHost) { NET.hostRun = false; netSend({ t: 'end', r: { ...r, rec: [] } }); } daily ? endDaily(daily, r) : endLevel(wi, li, k, r); }, { race, resume, seed: daily ? daily.seed : 0, chars, net: netHost ? 'host' : undefined });
   if (netHost) netStartHost(run, wi, li, k);
@@ -239,9 +239,9 @@ function endDaily(D, r) {
 // ---------- Eigene Level (Editor, geteilte Links) ----------
 let CUST = null;
 function playCustom(d, from) {
-  CUST = d; const S = stats(); persist(); show('play'); tc.classList.toggle('co', !!save.chars.coop); $('#bd').style.display = charStats(S, save.chars.p1).dash ? 'flex' : 'none'; paused = false; curLv = { wi: d.w, li: 3, k: -1, custom: d, from };
+  CUST = d; const S = stats(); persist(); show('play'); $('#bd').style.display = charStats(S, save.chars.p1).dash ? 'flex' : 'none'; paused = false; curLv = { wi: d.w, li: 3, k: -1, custom: d, from };
   AUDIO.play('level', { wi: d.w, li: 3, kind: d.kind });
-  run = new Run(d.w, 3, S, r => endCustom(d, r, from), { custom: d, chars: save.chars.coop ? [save.chars.p1, save.chars.p2] : [save.chars.p1] });
+  run = new Run(d.w, 3, S, r => endCustom(d, r, from), { custom: d, chars: [save.chars.p1] });
   last = performance.now(); startLoop();
 }
 function endCustom(d, r, from) {
@@ -291,15 +291,12 @@ function nextTip() {
 let charsBack = 'title';
 function chars(back) {
   if (back) charsBack = back; show('ui'); const C = save.chars;
-  const card = (id, slot) => id === 'chey' && !cheyOpen() ? `<div class=it style="width:150px;opacity:.55"><div class=e>🔒</div><b>Chey</b><br><small>Wird mit Neues Spiel+ freigeschaltet</small></div>` : `<div class="it ${C[slot] === id ? 'sel' : ''}" style="width:150px" tabindex=0 onclick="pickChar('${slot}','${id}')"><div class=e>${catImg(id, 76)}</div><b>${CHAR[id].n}</b><br><small>${CHAR[id].d}</small></div>`;
+  const card = id => id === 'chey' && !cheyOpen() ? `<div class=it style="width:150px;opacity:.55"><div class=e>🔒</div><b>Chey</b><br><small>Wird mit Neues Spiel+ freigeschaltet</small></div>` : `<div class="it ${C.p1 === id ? 'sel' : ''}" style="width:150px" tabindex=0 onclick="pickChar('${id}')"><div class=e>${catImg(id, 76)}</div><b>${CHAR[id].n}</b><br><small>${CHAR[id].d}</small></div>`;
   ui.innerHTML = `<div class=hd><h2>🐱 Charaktere</h2><button class=d onclick="${charsBack === 'map' ? 'map()' : 'showTitle()'}">Zurück</button></div>
-  <div class=card><h3>Spielmodus</h3><div class=row><button class="${C.coop ? 'd' : 'g'}" onclick="setCoop(false)">1 Spieler</button><button class="${C.coop ? 'g' : 'd'}" onclick="setCoop(true)">👥 2 Spieler (lokal)</button></div>
-  ${C.coop ? '<small>Spieler 1: A/D laufen · W oder Leertaste springen · F schlagen · G Dash · S Tür.<br>Spieler 2: Pfeiltasten · ↑ springen · Enter schlagen · rechte Shift Dash · ↓ Tür.<br>Oder zwei Controller. Fällt eine Katze um, steht sie nach 6 Sekunden wieder auf. Das Level ist geschafft, wenn alle lebenden Katzen im Ziel sind.</small>' : '<small>Im 2-Spieler-Modus spielen Luna und Minsch gemeinsam an einem Gerät. Chey ist ein optionaler dritter Charakter und wird mit Neues Spiel+ freigeschaltet.</small>'}</div>
-  <div class=card><h3>${C.coop ? 'Spieler 1' : 'Dein Charakter'}</h3>${['luna', 'minsch', 'chey'].map(id => card(id, 'p1')).join('')}</div>
-  ${C.coop ? `<div class=card><h3>Spieler 2</h3>${['luna', 'minsch', 'chey'].map(id => card(id, 'p2')).join('')}</div>` : ''}`;
+  <div class=card><h3>Dein Charakter</h3>${['luna', 'minsch', 'chey'].map(card).join('')}</div>
+  <div class=card><small>Zu zweit spielst du online mit Freunden: im Titel „🌐 Online-Koop“ wählen. Jeder spielt mit seinem eigenen Charakter. Chey wird mit Neues Spiel+ freigeschaltet.</small></div>`;
 }
-function pickChar(slot, id) { if (id === 'chey' && !cheyOpen()) return toast('🔒 Chey gibt es erst ab Neues Spiel+'); const C = save.chars, other = slot === 'p1' ? 'p2' : 'p1'; if (C[other] === id) C[other] = C[slot]; C[slot] = id; persist(); chars(); }
-function setCoop(v) { save.chars.coop = v; persist(); chars(); }
+function pickChar(id) { if (id === 'chey' && !cheyOpen()) return toast('🔒 Chey gibt es erst ab Neues Spiel+'); save.chars.p1 = id; persist(); chars(); }
 
 // ---------- Einstellungen, Spielstand-Code, Cloud ----------
 const esc = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
@@ -357,9 +354,7 @@ function importCode() {
 const KEY = { ArrowLeft: 'l', a: 'l', ArrowRight: 'r', d: 'r', ArrowUp: 'j', w: 'j', ' ': 'j', x: 'a', z: 'a', j: 'a', Shift: 'dash', c: 'dash', ArrowDown: 'use', s: 'use' };
 function setInto(T, c, v) { if (c === 'l') T.l = v; else if (c === 'r') T.r = v; else if (c === 'j') { T.j = v; if (v) T.jb = .12; } else if (c === 'a' && v) T.ap = 1; else if (c === 'dash' && v) T.dash = 1; else if (c === 'use' && v) T.use = 1; }
 const setIn = (c, v) => setInto(IN, c, v), setIn2 = (c, v) => setInto(IN2, c, v);
-// Lokaler Koop auf einer Tastatur: Spieler 1 links (WASD + F/G), Spieler 2 rechts (Pfeile + Enter/Shift rechts)
-const K1 = { KeyA: 'l', KeyD: 'r', KeyW: 'j', Space: 'j', KeyS: 'use', KeyF: 'a', KeyG: 'dash', ShiftLeft: 'dash' }, K2 = { ArrowLeft: 'l', ArrowRight: 'r', ArrowUp: 'j', ArrowDown: 'use', Enter: 'a', Slash: 'a', ShiftRight: 'dash' };
-const coopKeys = () => save.chars.coop && mode === 'play' && !NET.live;
+
 const typing = e => e.target && /^(INPUT|TEXTAREA)$/.test(e.target.tagName);
 addEventListener('keydown', e => {
   if (typing(e)) return;
@@ -372,19 +367,13 @@ addEventListener('keydown', e => {
     }
     return;
   }
-  if (coopKeys()) { const c1 = K1[e.code], c2 = K2[e.code]; if (c1 || c2) e.preventDefault(); if (!e.repeat) { if (c1) setIn(c1, 1); if (c2) setIn2(c2, 1); } return; }
   const c = KEY[e.key]; if (c) { e.preventDefault(); if (!e.repeat) setIn(c, 1); }
 });
-addEventListener('keyup', e => { if (typing(e)) return; if (coopKeys()) { const c1 = K1[e.code], c2 = K2[e.code]; if (c1) setIn(c1, 0); if (c2) setIn2(c2, 0); return; } const c = KEY[e.key]; if (c) setIn(c, 0); });
+addEventListener('keyup', e => { if (typing(e)) return; const c = KEY[e.key]; if (c) setIn(c, 0); });
 for (const [id, c] of [['#bl', 'l'], ['#br', 'r'], ['#bj', 'j'], ['#ba', 'a'], ['#bd', 'dash'], ['#bu', 'use']]) {
   const el = $(id);
   el.addEventListener('pointerdown', e => { e.preventDefault(); el.classList.add('on'); setIn(c, 1); });
   for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) el.addEventListener(ev, () => { el.classList.remove('on'); setIn(c, 0); });
-}
-for (const [id, c] of [['#b2l', 'l'], ['#b2r', 'r'], ['#b2j', 'j'], ['#b2a', 'a']]) {
-  const el = $(id);
-  el.addEventListener('pointerdown', e => { e.preventDefault(); el.classList.add('on'); setIn2(c, 1); });
-  for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) el.addEventListener(ev, () => { el.classList.remove('on'); setIn2(c, 0); });
 }
 $('#q').addEventListener('click', pauseGame);
 addEventListener('keydown', e => { if (typing(e)) return; if (e.key === 'Escape' || e.key === 'p') { if (paused) resumeGame(); else pauseGame(); } });
