@@ -189,7 +189,7 @@ class Run {
   constructor(wi, li, S, end, opts) {
     opts = opts || {};
     this.wi = wi; this.li = li; this.S = S; this.end = end; this.Wd = W[wi];
-    Object.assign(this, genLevel(wi, li, opts.seed));
+    Object.assign(this, opts.custom ? customLevel(opts.custom) : genLevel(wi, li, opts.seed));
     this.ice = this.sp.mods.includes('ice'); this.lowg = this.sp.mods.includes('lowgrav'); this.wx = this.sp.weather; this.wind = this.sp.wind || (this.wx === 'sand' ? (this.sp.ph > 3 ? 1 : -1) * 55 : 0); this.hits = 0; this.maxCombo = 0; this.keyN = 0; this.gateHint = -9;
     this.rec = []; this.recT = 0; this.kills = {}; this.race = !!opts.race; this.ghost = this.race ? loadGhost(wi, li) : null; this.par = this.cols * TS / 150;
     this.t = 0; this.animT = 0; this.pan = 2.8; this.time = 45 + this.cols * .35 + S.time;
@@ -204,7 +204,7 @@ class Run {
     this.parts = []; this.shake = 0; this.combo = 0; this.comboT = 0; this.eshots = []; this.runT = 0; this.wasOn = false; this.room = null; this.fade = 0; this.secrets = 0; this.canUse = false;
     for (const m of this.movers) this.moveM(m, 0);
     IN.jb = 0; IN.ap = 0; IN.dash = 0; IN.use = 0; IN2.jb = 0; IN2.ap = 0; IN2.dash = 0; IN2.use = 0;
-    this.spawn();
+    if (opts.custom) this.spawnCustom(opts.custom); else this.spawn();
     if (opts.resume && opts.resume.cpX) { // Neustart ab Checkpoint
       const rs = opts.resume, cx = rs.cpX;
       this.players.forEach((q, i) => { q.x = cx + i * 18; q.y = rs.cpY - 30; q.safe = { x: q.x, y: q.y }; });
@@ -217,6 +217,12 @@ class Run {
   moveM(m, dt) {
     const s = Math.sin(this.t * m.sp + m.ph), nx = m.cx + s * m.ax - m.w / 2, ny = m.y0 + s * m.ay;
     m.dx = dt ? nx - m.x : 0; m.dy = dt ? ny - m.y : 0; m.x = nx; m.y = ny;
+  }
+
+  // Eigenes Level: nur die im Editor gesetzten Gegner und Sammelstuecke
+  spawnCustom(d) {
+    for (const o of d.objs) this.pick.push({ k: o.k, x: o.c * TS + 16, y: o.r * TS + 16 });
+    for (const e of d.en) { const t = this.Wd.enemies[e.t], fly = t.b === 'fly', h = fly ? 24 : 26; this.ent.push(this.mkEnemy(t, e.c * TS, fly ? e.r * TS : e.r * TS + TS - h)); }
   }
 
   spawn() {

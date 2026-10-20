@@ -1,6 +1,6 @@
 // UI, Speicherstand, Story, Laeden, Skillbaum, Beutel, Bosskampf und Spielschleife.
 const $ = s => document.querySelector(s), ui = $('#ui'), cv = $('#cv'), ctx = cv.getContext('2d', { alpha: false, desynchronized: true }), tc = $('#tc');
-const defSave = () => ({ w: 0, prog: [0, 0, 0, 0, 0, 0, 0], shards: 0, coins: 0, skills: {}, own: {}, load: [], moons: {}, cleared: {}, cons: {}, seen: {}, bells: {}, tips: {}, cos: { own: {}, eq: {} }, stats: { kills: {}, secrets: 0, levels: 0 }, ach: {}, best: {}, rank: {}, daily: {}, ng: 0, ts: 0, chars: { p1: 'luna', p2: 'minsch', coop: false } });
+const defSave = () => ({ w: 0, prog: [0, 0, 0, 0, 0, 0, 0], shards: 0, coins: 0, skills: {}, own: {}, load: [], moons: {}, cleared: {}, cons: {}, seen: {}, bells: {}, tips: {}, cos: { own: {}, eq: {} }, stats: { kills: {}, secrets: 0, levels: 0 }, ach: {}, best: {}, rank: {}, daily: {}, editor: null, ng: 0, ts: 0, chars: { p1: 'luna', p2: 'minsch', coop: false } });
 const SAVE_KEY = window.ADMIN ? 'mondkatze_admin' : 'mondkatze';
 let save; try { save = Object.assign(defSave(), JSON.parse(localStorage.getItem(SAVE_KEY))); } catch (e) { save = defSave(); }
 while (save.prog.length < W.length) save.prog.push(0);
@@ -48,8 +48,8 @@ function showTitle() {
   ui.innerHTML = `<div class=title><div>${catImg('luna', 130)}${catImg('chey', 100)}</div><h1>Mondkatze</h1>
   <p>Der Mondverschlinger hat <b>Chey</b> entführt und den Mond verschluckt.<br>Hilf <b>Luna</b>, Chey zu retten!</p>
   <div class="row c"><button class=g onclick="start()">▶ ${save.seen.intro ? 'Weiter' : 'Neues Abenteuer'}</button><button class=r onclick="resetGame()">Neu starten</button></div>
-  <div class="row c"><button class=g onclick="daily()">📅 Tageslevel${save.daily.streak ? ' 🔥' + save.daily.streak : ''}</button><button class=d onclick="chars('title')">🐱 Charaktere</button><button class=d onclick="album()">📖 Album</button><button class=d onclick="settings()">⚙️ Einstellungen &amp; Cloud</button><button class=d data-fs onclick="FS.toggle()">⛶</button>${save.cleared['5:boss'] ? `<button class=g onclick="startNG()">🔁 Neues Spiel+ (${(save.ng || 0) + 1})</button>` : ''}</div>
-  <small>Handy quer halten · Android/iPhone: im Browser "Zum Startbildschirm"</small><br><small>Version 15</small></div>`;
+  <div class="row c"><button class=g onclick="daily()">📅 Tageslevel${save.daily.streak ? ' 🔥' + save.daily.streak : ''}</button><button class=d onclick="chars('title')">🐱 Charaktere</button><button class=d onclick="editor('title')">🛠️ Editor</button><button class=d onclick="album()">📖 Album</button><button class=d onclick="settings()">⚙️ Einstellungen &amp; Cloud</button><button class=d data-fs onclick="FS.toggle()">⛶</button>${save.cleared['5:boss'] ? `<button class=g onclick="startNG()">🔁 Neues Spiel+ (${(save.ng || 0) + 1})</button>` : ''}</div>
+  <small>Handy quer halten · Android/iPhone: im Browser "Zum Startbildschirm"</small><br><small>Version 16</small></div>`;
 }
 function start() { if (!save.seen.intro) cine('intro', {}, () => story(STORY.intro, () => { save.seen.intro = 1; persist(); map(); })); else map(); }
 function resetGame() { if (confirm('Gesamten Fortschritt löschen?')) { save = defSave(); persist(); lastAt = null; showTitle(); } }
@@ -222,6 +222,19 @@ function endDaily(D, r) {
   ui.innerHTML = `<div class=card style="text-align:center;margin-top:8vh"><div>${catImg(save.chars.p1, 90)}</div><h2>📅 Tageslevel geschafft!</h2><div class=rank style="color:${RCOL[rk]}">${rk}</div>${lines.map(l => `<p>${l}</p>`).join('')}<div class="row c"><button onclick="daily()">🔄 Nochmal</button><button class=g onclick="showTitle()">Menü</button></div></div>`;
 }
 
+// ---------- Eigene Level (Editor, geteilte Links) ----------
+let CUST = null;
+function playCustom(d, from) {
+  CUST = d; const S = stats(); persist(); show('play'); $('#bd').style.display = charStats(S, save.chars.p1).dash ? 'flex' : 'none'; paused = false; curLv = { wi: d.w, li: 3, k: -1, custom: d, from };
+  AUDIO.play('level', { wi: d.w, li: 3, kind: d.kind });
+  run = new Run(d.w, 3, S, r => endCustom(d, r, from), { custom: d, chars: save.chars.coop ? [save.chars.p1, save.chars.p2] : [save.chars.p1] });
+  last = performance.now(); requestAnimationFrame(loop);
+}
+function endCustom(d, r, from) {
+  run = null; show('ui'); AUDIO.stop(); AUDIO.sfx(r.win ? 'win' : 'lose'); const used = Math.round(r.elapsed * 10) / 10;
+  ui.innerHTML = `<div class=card style="text-align:center;margin-top:8vh"><div>${catImg(save.chars.p1, 90)}</div><h2>${r.win ? '✅ Level geschafft!' : '💀 ' + r.why}</h2>${r.win ? `<p>⏱ ${used}s · 🪙 ${r.coins} · 🌙 ${r.shards}</p>` : ''}<div class="row c"><button class=g onclick="playCustom(CUST,'${from}')">🔄 Nochmal</button>${from === 'editor' ? '<button onclick="editor()">✏️ Zum Editor</button>' : '<button class=d onclick="showTitle()">Menü</button>'}</div></div>`;
+}
+
 // ---------- Pause, Tipps ----------
 function pauseGame() {
   if (!run || paused || run.done || mode !== 'play') return; paused = true; AUDIO.duck(.25); IN.l = IN.r = IN.j = 0;
@@ -232,8 +245,8 @@ function pauseGame() {
   $('#pause').style.display = 'flex';
 }
 function resumeGame() { if (!paused) return; paused = false; $('#pause').style.display = 'none'; AUDIO.duck(1); last = performance.now(); requestAnimationFrame(loop); }
-function restartLevel() { $('#pause').style.display = 'none'; paused = false; AUDIO.duck(1); run = null; play(curLv.wi, curLv.li, curLv.k, curLv.race, null, curLv.daily); }
-function quitLevel() { $('#pause').style.display = 'none'; paused = false; AUDIO.duck(1); run = null; AUDIO.stop(); if (curLv.daily) showTitle(); else map({ from: curLv.k }); }
+function restartLevel() { $('#pause').style.display = 'none'; paused = false; AUDIO.duck(1); run = null; if (curLv.custom) return playCustom(curLv.custom, curLv.from); play(curLv.wi, curLv.li, curLv.k, curLv.race, null, curLv.daily); }
+function quitLevel() { $('#pause').style.display = 'none'; paused = false; AUDIO.duck(1); run = null; AUDIO.stop(); if (curLv.custom) { if (curLv.from === 'editor') editor(); else showTitle(); } else if (curLv.daily) showTitle(); else map({ from: curLv.k }); }
 function setPref(k, v) { PREFS[k] = v; savePrefs(); }
 const TIPS = {
   basics: '🐱 ◀ ▶ laufen · ⤒ springen · ⚔️ schlagen. Sammle 🌙 und 🪙 – das Ziel ist die 🏁!',
@@ -359,5 +372,7 @@ addEventListener('contextmenu', e => e.preventDefault());
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).catch(() => { });
 
 showTitle();
+// Geteilter Level-Link (?lvl=...) direkt anbieten
+try { const q = new URLSearchParams(location.search).get('lvl'); if (q) { const d = edDecode(q); history.replaceState(null, '', location.pathname); setTimeout(() => { if (confirm('Ein geteiltes Level wurde gefunden. Jetzt spielen?')) playCustom(d, 'link'); }, 700); } } catch (e) { setTimeout(() => toast('⚠️ Der Level-Link ist ungültig'), 600); }
 CLOUD.boot();
 applyPrefs();
