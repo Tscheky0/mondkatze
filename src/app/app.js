@@ -1,6 +1,6 @@
 // UI, Speicherstand, Story, Laeden, Skillbaum, Beutel, Bosskampf und Spielschleife.
 const $ = s => document.querySelector(s), ui = $('#ui'), cv = $('#cv'), ctx = cv.getContext('2d', { alpha: false, desynchronized: true }), tc = $('#tc');
-const defSave = () => ({ w: 0, prog: [0, 0, 0, 0, 0, 0], shards: 0, coins: 0, skills: {}, own: {}, load: [], moons: {}, cleared: {}, cons: {}, seen: {}, bells: {}, tips: {}, cos: { own: {}, eq: {} }, stats: { kills: {}, secrets: 0, levels: 0 }, ach: {}, best: {}, ng: 0, ts: 0, chars: { p1: 'luna', p2: 'minsch', coop: false } });
+const defSave = () => ({ w: 0, prog: [0, 0, 0, 0, 0, 0], shards: 0, coins: 0, skills: {}, own: {}, load: [], moons: {}, cleared: {}, cons: {}, seen: {}, bells: {}, tips: {}, cos: { own: {}, eq: {} }, stats: { kills: {}, secrets: 0, levels: 0 }, ach: {}, best: {}, rank: {}, daily: {}, ng: 0, ts: 0, chars: { p1: 'luna', p2: 'minsch', coop: false } });
 const SAVE_KEY = window.ADMIN ? 'mondkatze_admin' : 'mondkatze';
 let save; try { save = Object.assign(defSave(), JSON.parse(localStorage.getItem(SAVE_KEY))); } catch (e) { save = defSave(); }
 const persistRaw = () => { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) { } };
@@ -47,8 +47,8 @@ function showTitle() {
   ui.innerHTML = `<div class=title><div>${catImg('luna', 130)}${catImg('chey', 100)}</div><h1>Mondkatze</h1>
   <p>Der Mondverschlinger hat <b>Chey</b> entführt und den Mond verschluckt.<br>Hilf <b>Luna</b>, Chey zu retten!</p>
   <div class="row c"><button class=g onclick="start()">▶ ${save.seen.intro ? 'Weiter' : 'Neues Abenteuer'}</button><button class=r onclick="resetGame()">Neu starten</button></div>
-  <div class="row c"><button class=d onclick="chars('title')">🐱 Charaktere</button><button class=d onclick="album()">📖 Album</button><button class=d onclick="settings()">⚙️ Einstellungen &amp; Cloud</button><button class=d data-fs onclick="FS.toggle()">⛶</button>${save.cleared['5:boss'] ? `<button class=g onclick="startNG()">🔁 Neues Spiel+ (${(save.ng || 0) + 1})</button>` : ''}</div>
-  <small>Handy quer halten · Android/iPhone: im Browser "Zum Startbildschirm"</small><br><small>Version 12</small></div>`;
+  <div class="row c"><button class=g onclick="daily()">📅 Tageslevel${save.daily.streak ? ' 🔥' + save.daily.streak : ''}</button><button class=d onclick="chars('title')">🐱 Charaktere</button><button class=d onclick="album()">📖 Album</button><button class=d onclick="settings()">⚙️ Einstellungen &amp; Cloud</button><button class=d data-fs onclick="FS.toggle()">⛶</button>${save.cleared['5:boss'] ? `<button class=g onclick="startNG()">🔁 Neues Spiel+ (${(save.ng || 0) + 1})</button>` : ''}</div>
+  <small>Handy quer halten · Android/iPhone: im Browser "Zum Startbildschirm"</small><br><small>Version 13</small></div>`;
 }
 function start() { if (!save.seen.intro) cine('intro', {}, () => story(STORY.intro, () => { save.seen.intro = 1; persist(); map(); })); else map(); }
 function resetGame() { if (confirm('Gesamten Fortschritt löschen?')) { save = defSave(); persist(); lastAt = null; showTitle(); } }
@@ -150,13 +150,13 @@ function buySkill(id) { const r = save.skills[id] || 0; if (pts() >= r + 1) { sa
 
 // ---------- Jump&Run ----------
 let run = null, last = 0, paused = false, curLv = null;
-function play(wi, li, k, race) {
+function play(wi, li, k, race, resume, daily) {
   lastK = k; const S = stats(), used = [];
   for (const [id, txt, f] of [['heart', '🍪 +1 Herz', () => S.maxhp++], ['time', '⏰ +20s', () => S.time += 20], ['shield', '🛡️ Schild', () => S.shield++]])
     if (save.cons[id] > 0) { save.cons[id]--; f(); used.push(txt); }
-  persist(); show('play'); $('#bd').style.display = charStats(S, save.chars.p1).dash ? 'flex' : 'none'; paused = false; curLv = { wi, li, k, race };
+  persist(); show('play'); $('#bd').style.display = charStats(S, save.chars.p1).dash ? 'flex' : 'none'; paused = false; curLv = { wi, li, k, race, daily };
   AUDIO.play('level', { wi, li, kind: levelSpec(wi, li).kind });
-  run = new Run(wi, li, S, r => endLevel(wi, li, k, r), { race, chars: race || !save.chars.coop ? [save.chars.p1] : [save.chars.p1, save.chars.p2] });
+  run = new Run(wi, li, S, r => daily ? endDaily(daily, r) : endLevel(wi, li, k, r), { race, resume, seed: daily ? daily.seed : 0, chars: race || !save.chars.coop ? [save.chars.p1] : [save.chars.p1, save.chars.p2] });
   if (used.length) run.say(used.join(' · '));
   last = performance.now(); requestAnimationFrame(loop);
 }
@@ -168,9 +168,18 @@ function loop(t) {
   r.update(Math.min(.05, rdt) * (window.ADM ? ADM.slow : 1)); last = t; if (r.canUse !== lastCan) { lastCan = r.canUse; buEl.style.opacity = r.canUse ? 1 : .35; }
   if (run === r) { r.draw(ctx); if (window.ADM) { ADM.tick(); ADM.overlay(ctx, r); } requestAnimationFrame(loop); }
 }
+const RANKV = { C: 0, B: 1, A: 2, S: 3 }, RCOL = { C: '#b9c6e6', B: '#7cd6ff', A: '#7dff9a', S: '#ffd54a' };
+// Wertung aus Zeit, getroffen werden, Kills, Kombo, Geheimnissen und Sammelstuecken
+function rankOf(r) {
+  const kills = Object.values(r.kills).reduce((a, b) => a + b, 0);
+  let pts = r.elapsed <= r.par ? 40 : r.elapsed <= r.par * 1.5 ? 25 : 10;
+  pts += r.hits === 0 ? 30 : r.hits <= 2 ? 15 : r.hits <= 4 ? 5 : 0;
+  pts += Math.min(25, kills * 3) + (r.combo || 0) * 5 + (r.secrets || 0) * 8 + (r.moon ? 12 : 0) + (r.bell ? 6 : 0) + (r.chest ? 6 : 0) + Math.min(20, Math.round(r.shards * 1.2));
+  return pts >= 105 ? 'S' : pts >= 80 ? 'A' : pts >= 55 ? 'B' : 'C';
+}
 function endLevel(wi, li, k, r) {
   run = null; show('ui'); AUDIO.stop(); AUDIO.sfx(r.win ? 'win' : 'lose');
-  if (!r.win) { ui.innerHTML = `<div class=card style="text-align:center;margin-top:10vh"><h2>💀 ${r.why}</h2><div class="row c"><button onclick="play(${wi},${li},${k})">Nochmal</button><button class=d onclick="map({from:${k}})">Karte</button></div></div>`; return; }
+  if (!r.win) { ui.innerHTML = `<div class=card style="text-align:center;margin-top:10vh"><h2>💀 ${r.why}</h2><div class="row c">${r.cpX ? `<button class=g onclick="play(${wi},${li},${k},false,{cpX:${Math.round(r.cpX)},cpY:${Math.round(r.cpY)},cpTime:${Math.round(r.cpTime)}})">🏮 Vom Checkpoint</button>` : ''}<button onclick="play(${wi},${li},${k})">${r.cpX ? 'Von vorn' : 'Nochmal'}</button><button class=d onclick="map({from:${k}})">Karte</button></div></div>`; return; }
   const key = wi + ':' + li, first = !save.cleared[key], lv0 = Math.floor(save.shards / 20), lines = [];
   let gain = first ? r.shards : Math.ceil(r.shards * .25);
   const cg = first ? r.coins : Math.ceil(r.coins * .5), tb = Math.floor(r.time / 5);
@@ -185,11 +194,31 @@ function endLevel(wi, li, k, r) {
   const used = Math.round(r.elapsed * 10) / 10, medal = used <= r.par ? 'gold' : used <= r.par * 1.5 ? 'silver' : 'bronze', bst = save.best[key];
   lines.push(`${MEDAL[medal]} ${used}s (Gold bis ${Math.round(r.par)}s)`);
   if (!bst || used < bst.t) { save.best[key] = { t: used, m: medal }; saveGhost(wi, li, r.rec); if (bst) lines.push('🏁 Neue Bestzeit! Im Rennen jagt dich jetzt deine Geister-Katze.'); }
+  const rk = rankOf(r), rko = save.rank[key]; if (!rko || RANKV[rk] > RANKV[rko]) { save.rank[key] = rk; if (rko) lines.push('🏅 Neuer Bestrang!'); }
+  lines.push(`💥 ${r.hits} Treffer erhalten`);
   for (const n in r.kills) save.stats.kills[n] = (save.stats.kills[n] || 0) + r.kills[n];
   save.stats.secrets += r.secrets || 0; save.stats.levels++;
   save.shards += gain; save.coins += Math.round((cg + tb) * (1 + .5 * (save.ng || 0))); save.cleared[key] = 1; save.prog[wi] = Math.max(save.prog[wi], k + 1); persist(); checkAch();
   if (Math.floor(save.shards / 20) > lv0) lines.push('⭐ Neuer Skillpunkt im Mondbaum!');
-  ui.innerHTML = `<div class=card style="text-align:center;margin-top:8vh"><div>${catImg('luna', 90)}</div><h2>✅ ${W[wi].name} ${li + 1} geschafft!</h2><p>🪙 +${cg} · 🌙 +${gain}${first ? '' : ' (Wiederholung)'} · ⏱ ${r.time}s übrig</p>${lines.map(l => `<p>${l}</p>`).join('')}<div class="row c"><button class=g onclick="map({from:${k},advance:true})">Weiter ▶</button><button onclick="play(${wi},${li},${k})">🔄 Nochmal</button><button class=d onclick="map({from:${k}})">🗺️ Karte</button></div></div>`;
+  ui.innerHTML = `<div class=card style="text-align:center;margin-top:8vh"><div>${catImg('luna', 90)}</div><h2>✅ ${W[wi].name} ${li + 1} geschafft!</h2><div class=rank style="color:${RCOL[rk]}">${rk}</div><p>🪙 +${cg} · 🌙 +${gain}${first ? '' : ' (Wiederholung)'} · ⏱ ${r.time}s übrig</p>${lines.map(l => `<p>${l}</p>`).join('')}<div class="row c"><button class=g onclick="map({from:${k},advance:true})">Weiter ▶</button><button onclick="play(${wi},${li},${k})">🔄 Nochmal</button><button class=d onclick="map({from:${k}})">🗺️ Karte</button></div></div>`;
+}
+
+// ---------- Tageslevel: pro Tag ein festes Level mit eigener Bestzeit und Serie ----------
+function dailyInfo() {
+  const d = new Date(), seed = d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate(), open = [];
+  for (let w = 0; w < W.length; w++) if (unlocked(w)) open.push(w);
+  const wi = open[seed % open.length], li = Math.min(W[wi].n - 1, 3 + ((seed >> 3) % (W[wi].n - 3)));
+  return { seed, wi, li };
+}
+function daily() { const D = dailyInfo(); show('play'); play(D.wi, D.li, -1, false, null, D); }
+function endDaily(D, r) {
+  run = null; show('ui'); AUDIO.stop(); AUDIO.sfx(r.win ? 'win' : 'lose');
+  if (!r.win) { ui.innerHTML = `<div class=card style="text-align:center;margin-top:10vh"><h2>💀 ${r.why}</h2><div class="row c"><button onclick="daily()">Nochmal</button><button class=d onclick="showTitle()">Menü</button></div></div>`; return; }
+  const dl = save.daily, first = dl.last !== D.seed, used = Math.round(r.elapsed * 10) / 10, rk = rankOf(r), lines = [];
+  if (first) { const yd = new Date(); yd.setDate(yd.getDate() - 1); const ys = yd.getFullYear() * 10000 + (yd.getMonth() + 1) * 100 + yd.getDate(); dl.streak = dl.last === ys ? (dl.streak || 0) + 1 : 1; dl.last = D.seed; dl.best = used; const c = 60 + Math.min(7, dl.streak) * 10; save.coins += c; save.shards += 10; lines.push(`🪙 +${c} · 🌙 +10 (Serie ${dl.streak} 🔥)`); }
+  else if (used < dl.best) { dl.best = used; lines.push('🏁 Neue Tagesbestzeit!'); }
+  lines.push(`⏱ ${used}s · Bestzeit heute: ${dl.best}s`, `💥 ${r.hits} Treffer erhalten`); persist();
+  ui.innerHTML = `<div class=card style="text-align:center;margin-top:8vh"><div>${catImg(save.chars.p1, 90)}</div><h2>📅 Tageslevel geschafft!</h2><div class=rank style="color:${RCOL[rk]}">${rk}</div>${lines.map(l => `<p>${l}</p>`).join('')}<div class="row c"><button onclick="daily()">🔄 Nochmal</button><button class=g onclick="showTitle()">Menü</button></div></div>`;
 }
 
 // ---------- Pause, Tipps ----------
@@ -202,8 +231,8 @@ function pauseGame() {
   $('#pause').style.display = 'flex';
 }
 function resumeGame() { if (!paused) return; paused = false; $('#pause').style.display = 'none'; AUDIO.duck(1); last = performance.now(); requestAnimationFrame(loop); }
-function restartLevel() { $('#pause').style.display = 'none'; paused = false; AUDIO.duck(1); run = null; play(curLv.wi, curLv.li, curLv.k, curLv.race); }
-function quitLevel() { $('#pause').style.display = 'none'; paused = false; AUDIO.duck(1); run = null; AUDIO.stop(); map({ from: curLv.k }); }
+function restartLevel() { $('#pause').style.display = 'none'; paused = false; AUDIO.duck(1); run = null; play(curLv.wi, curLv.li, curLv.k, curLv.race, null, curLv.daily); }
+function quitLevel() { $('#pause').style.display = 'none'; paused = false; AUDIO.duck(1); run = null; AUDIO.stop(); if (curLv.daily) showTitle(); else map({ from: curLv.k }); }
 function setPref(k, v) { PREFS[k] = v; savePrefs(); }
 const TIPS = {
   basics: '🐱 ◀ ▶ laufen · ⤒ springen · ⚔️ schlagen. Sammle 🌙 und 🪙 – das Ziel ist die 🏁!',

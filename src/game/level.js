@@ -44,8 +44,8 @@ function levelSpec(wi, li) {
     gap: 150 + Math.floor(r() * 150), sc: .8 + r() * .6, f1: .006 + r() * .006, a1: 35 + r() * 35, f2: .012 + r() * .01, a2: 25 + r() * 25, ph: r() * 6, wind };
 }
 
-function genLevel(wi, li) {
-  const sp = levelSpec(wi, li), r = rng(wi * 1000 + li * 37 + 7), st = sp.style, mods = sp.mods, cols = 100 + li * 8 + wi * 6;
+function genLevel(wi, li, seed) {
+  const sp = levelSpec(wi, li), r = rng(wi * 1000 + li * 37 + 7 + (seed || 0) * 101), st = sp.style, mods = sp.mods, cols = 100 + li * 8 + wi * 6;
   const g = []; for (let y = 0; y < ROWS; y++) g.push(new Uint8Array(cols));
   const diff = Math.min(.5, .12 + wi * .04 + li * .012);
   const PR = { plain: { l: [4, 11], gp: diff, gs: [2, 3], sp: .4, ss: 1 }, hills: { l: [3, 7], gp: diff * .25, gs: [2, 2], sp: .85, ss: 2 },
@@ -121,7 +121,15 @@ function genLevel(wi, li) {
     if (mods.includes('movers')) for (let k = 0; k < 3 && roomy.length; k++) { const s = pick(roomy); movers.push({ cx: (s.x0 + s.x1) / 2 * TS, y0: (s.y - 4) * TS, ax: 0, ay: 56, w: 80, h: 12, sp: 1.2 + r() * .5, ph: r() * 6, x: 0, y: 0, dx: 0, dy: 0 }); }
   }
   if (mods.includes('fireballs')) for (const gp of gaps) if (r() < .85) fire.push({ x: (gp.x0 + gp.x1) / 2 * TS, ph: r() * 3, per: 2.4 + r() * 1.2, hh: 170 + r() * 60 });
-  return { g, cols, spots, gaps, sp, springs, movers, fire, doors, moonPos: moon, flagX: (cols - 5) * TS, flagY: spots[spots.length - 1].y * TS };
+  // Checkpoint-Laternen etwa alle 45 Spalten auf ebenem Boden
+  const cps = [];
+  for (let x2 = 38; x2 < cols - 22; x2 += 42 + Math.floor(r() * 8)) {
+    const s2 = spots.find(q => q.x1 - q.x0 >= 5 && q.x1 > x2 + 2 && q.x0 < x2 + 12); if (!s2) continue;
+    const cx = clamp(Math.max(x2, s2.x0 + 2), s2.x0 + 2, s2.x1 - 3);
+    if (g[s2.y - 1][cx] || g[s2.y - 1][cx + 1] || cps.some(c => Math.abs(c.tx - cx) < 22)) continue;
+    cps.push({ tx: cx, x: cx * TS + 16, y: s2.y * TS, on: false });
+  }
+  return { g, cols, spots, gaps, sp, springs, movers, fire, doors, cps, moonPos: moon, flagX: (cols - 5) * TS, flagY: spots[spots.length - 1].y * TS };
 }
 
 
@@ -167,8 +175,8 @@ class Run {
   constructor(wi, li, S, end, opts) {
     opts = opts || {};
     this.wi = wi; this.li = li; this.S = S; this.end = end; this.Wd = W[wi];
-    Object.assign(this, genLevel(wi, li));
-    this.ice = this.sp.mods.includes('ice'); this.lowg = this.sp.mods.includes('lowgrav'); this.wind = this.sp.wind;
+    Object.assign(this, genLevel(wi, li, opts.seed));
+    this.ice = this.sp.mods.includes('ice'); this.lowg = this.sp.mods.includes('lowgrav'); this.wx = this.sp.weather; this.wind = this.sp.wind || (this.wx === 'sand' ? (this.sp.ph > 3 ? 1 : -1) * 55 : 0); this.hits = 0; this.maxCombo = 0;
     this.rec = []; this.recT = 0; this.kills = {}; this.race = !!opts.race; this.ghost = this.race ? loadGhost(wi, li) : null; this.par = this.cols * TS / 150;
     this.t = 0; this.animT = 0; this.pan = 2.8; this.time = 45 + this.cols * .35 + S.time;
     this.shards = 0; this.coins = 0; this.moon = false; this.chest = null; this.done = false;
@@ -183,6 +191,13 @@ class Run {
     for (const m of this.movers) this.moveM(m, 0);
     IN.jb = 0; IN.ap = 0; IN.dash = 0; IN.use = 0; IN2.jb = 0; IN2.ap = 0; IN2.dash = 0; IN2.use = 0;
     this.spawn();
+    if (opts.resume && opts.resume.cpX) { // Neustart ab Checkpoint
+      const rs = opts.resume, cx = rs.cpX;
+      this.players.forEach((q, i) => { q.x = cx + i * 18; q.y = rs.cpY - 30; q.safe = { x: q.x, y: q.y }; });
+      this.time = Math.max(30, rs.cpTime) + 8; for (const c of this.cps) if (c.x <= cx) c.on = true;
+      this.cpX = cx; this.cpY = rs.cpY; this.cpTime = this.time; this.pan = 0; this.cam = clamp(cx - VW * .4, 0, this.cols * TS - VW);
+      this.pick = this.pick.filter(k => k.x > cx); this.ent = this.ent.filter(e => e.x > cx + 220);
+    }
   }
 
   moveM(m, dt) {
@@ -242,7 +257,7 @@ class Run {
   hurt(d, who) {
     const p = this.p; if (p.inv > 0 || this.done || p.ko || (window.ADM && ADM.god)) return;
     if (p.sh > 0) { p.sh--; p.inv = 1; this.float(p.x, p.y - 10, 'Schild!', '#8cf'); return; }
-    p.hp -= d; p.inv = 1.3; this.shake = .3; snd('hurt'); if (window.vib) vib(70); this.spark(p.x + 11, p.y + 15, 10, '#ff5a5a'); p.vy = -300; p.vx = -p.face * 160; this.float(p.x, p.y - 10, '-' + d, '#f55');
+    this.hits++; p.hp -= d; p.inv = 1.3; this.shake = .3; snd('hurt'); if (window.vib) vib(70); this.spark(p.x + 11, p.y + 15, 10, '#ff5a5a'); p.vy = -300; p.vx = -p.face * 160; this.float(p.x, p.y - 10, '-' + d, '#f55');
     if (p.hp <= 0) {
       if (this.S.rev > 0) { this.S.rev--; p.hp = Math.ceil(this.S.maxhp / 2); this.say('Phönixfeder! Wiederbelebt'); }
       else if (this.players.some(q => q !== p && !q.ko)) { p.ko = true; p.koT = 6; p.hp = 0; p.vx = 0; this.spark(p.x + 11, p.y + 15, 14, '#ffffff'); this.say('💫 ' + CHAR[p.id].n + ' ist k.o. – kommt in 6s zurück'); }
@@ -422,6 +437,7 @@ class Run {
     for (const f of this.fx) { f.t -= dt; f.y -= 30 * dt; }
     this.fx = this.fx.filter(f => f.t > 0);
     const alive = P.filter(q => !q.ko);
+    if (!this.room) for (const c of this.cps) if (!c.on && alive.some(q => q.x + 11 > c.x)) this.cpAt(c);
     if (alive.length && alive.every(q => q.x > this.flagX)) this.finish(true, 'Ziel erreicht!');
     this.cam = clamp(ld.x - VW * .4, 0, this.cols * TS - VW);
     if (P.length > 1 && !this.room) for (const q of alive) if (q !== ld && q.x < this.cam - 30) { // Nachzuegler wird zum Anfuehrer geholt
@@ -444,13 +460,13 @@ class Run {
     p.inv -= dt; p.cd -= dt; p.swing -= dt;
     if (S.regen) { p.regenT = (p.regenT || 0) + dt; if (p.regenT > 28 / S.regen) { p.regenT = 0; if (p.hp < S.maxhp + b.hp) { p.hp++; this.float(p.x, p.y - 10, '+1', '#6f6'); } } }
     const dir = I.r - I.l, GRV = this.lowg ? 1100 : 1800, JV = this.lowg ? .84 : 1;
-    const tv = dir * 220 * (S.spd + b.spd) + (this.wind ? this.wind * (.7 + .3 * Math.sin(this.t * .8)) : 0);
+    const tv = dir * 220 * (S.spd + b.spd) * (this.wx === 'snow' ? .92 : 1) + (this.wind ? this.wind * (.7 + .3 * Math.sin(this.t * .8)) : 0);
     p.dcd -= dt;
     if (I.dash && S.dash && p.dcd <= 0) { p.dashT = .18; p.dcd = .9; snd('dash'); this.puff(p.x + 11, p.y + 20, 8, '#ffffff'); }
     I.dash = 0;
     if (p.dashT > 0) { p.dashT -= dt; p.vx = p.face * 520; p.vy = 0; p.inv = Math.max(p.inv, .05); this.parts.push({ x: p.x + 11, y: p.y + 15, vx: 0, vy: 0, g: 0, l: .25, m: .25, s: 10, c: '#ffffff' }); }
     else {
-      if (p.wjT > 0) p.wjT -= dt; else p.vx += (tv - p.vx) * Math.min(1, dt * (this.ice ? 3 : 16));
+      if (p.wjT > 0) p.wjT -= dt; else p.vx += (tv - p.vx) * Math.min(1, dt * (this.ice ? 3 : this.wx === 'rain' ? 9 : 16));
       p.vy = Math.min(p.vy + GRV * dt, 900);
       if (S.glide && I.j && !p.on && p.vy > 110 && p.coy <= 0) { p.vy = 110; if (Math.random() < .2) this.puff(p.x + 11, p.y + 4, 1, '#bfe8ff'); }
     }
@@ -489,7 +505,7 @@ class Run {
     if (I.ap && p.cd <= 0) {
       I.ap = 0; p.cd = .35; p.swing = .18; p.sid++;
       if (S.combo && this.comboT > 0) { this.combo = Math.min(S.combo, this.combo + 1); this.float(p.x, p.y - 24, 'Kombo +' + this.combo, '#ffd54a'); } else this.combo = 0;
-      this.comboT = .7;
+      this.comboT = .7; this.maxCombo = Math.max(this.maxCombo, this.combo);
       if (S.shot) this.shots.push({ x: p.x + p.w / 2, y: p.y + 10, vx: p.face * 520, life: .9, w: 12, h: 10, own: p });
     }
     if (p.swing > 0) {
@@ -498,9 +514,18 @@ class Run {
     }
   }
 
+  cpAt(c) {
+    c.on = true; this.cpX = c.x; this.cpY = c.y; this.cpTime = this.time; snd('bell'); this.say('🏮 Checkpoint!'); this.spark(c.x, c.y - 40, 16, '#ffd54a');
+    for (const q of this.players) {
+      q.safe = { x: c.x, y: c.y - 30 };
+      if (q.ko) { q.ko = false; q.hp = Math.max(1, Math.ceil((this.S.maxhp + this.boost.hp) / 2)); q.x = c.x; q.y = c.y - 40; q.vx = q.vy = 0; q.inv = 2; }
+      else if (q.hp < this.S.maxhp + this.boost.hp) q.hp++;
+    }
+  }
+
   finish(win, why) {
     if (this.done) return; this.done = true;
-    this.end({ win, why, shards: this.shards, coins: this.coins, moon: this.moon, kills: this.kills, rec: this.rec, elapsed: this.t, par: this.par, secrets: this.secrets, bell: !!this.bell, chest: !!this.chest, time: Math.ceil(this.time) });
+    this.end({ win, why, cpX: this.cpX || 0, cpY: this.cpY || 0, cpTime: this.cpTime || 0, hits: this.hits, combo: this.maxCombo, shards: this.shards, coins: this.coins, moon: this.moon, kills: this.kills, rec: this.rec, elapsed: this.t, par: this.par, secrets: this.secrets, bell: !!this.bell, chest: !!this.chest, time: Math.ceil(this.time) });
   }
 
   drawTile(c, v, tx, ty, st) {
@@ -578,6 +603,13 @@ class Run {
     for (const k of this.rocks) em('🪨', k.x + 13, k.y + 13, 30);
     if (!this.room) em('🏁', this.flagX + 16, this.flagY - 20, 40);
     for (const dd of this.doors) this.drawDoor(c, dd, em, tt);
+    if (!this.room) for (const k of this.cps) {
+      if (k.x < cam - 40 || k.x > cam + VW + 40) continue;
+      c.fillStyle = '#5a4630'; c.fillRect(k.x - 2, k.y - 42, 4, 42); c.fillStyle = '#3a2c1c'; c.fillRect(k.x - 7, k.y - 3, 14, 3);
+      if (k.on) { _gl(c, k.x, k.y - 50, 34, '255,214,90', .55 + .2 * Math.sin(tt * 5)); }
+      c.beginPath(); c.roundRect(k.x - 8, k.y - 60, 16, 18, 5); c.fillStyle = k.on ? '#ffd54a' : '#8a8a99'; c.fill(); c.strokeStyle = '#3a2c1c'; c.lineWidth = 2; c.stroke();
+      c.fillStyle = k.on ? '#fff6c8' : '#b8b8c8'; c.beginPath(); c.arc(k.x, k.y - 51, 3.4, 0, 7); c.fill();
+    }
     for (const k of this.pick) { if (k.x < cam - 40 || k.x > cam + VW + 40) continue; if (k.k !== 's') { c.globalAlpha = .22 + .1 * Math.sin(tt * 5 + k.x); c.fillStyle = k.k === 'o' ? '#ffd54a' : '#fff6c8'; c.beginPath(); c.arc(k.x, k.y, k.k === 'm' ? 28 : 15, 0, 7); c.fill(); c.globalAlpha = 1; } em({ s: '🌙', o: '🪙', m: '🌕', c: '🎁', b: '🔔', r: '💎' }[k.k], k.x, k.y + Math.sin(tt * 4 + k.x) * 3, k.k === 'm' ? 38 : 20); }
     for (const d of this.drops) em(d.d.e, d.x, d.y + Math.sin(tt * 5) * 4, 28);
     for (const e of this.ent) {
@@ -650,6 +682,7 @@ class Run {
 
   drawAtmos(c, sp, tt, cam) {
     if (PREFS.saver || this.room) return;
+    if (sp.weather === 'fog') { const q = this.lead(), px = q.x + 11 - this.cam, py = q.y + 15, fg = c.createRadialGradient(px, py, 110, px, py, 460); fg.addColorStop(0, 'rgba(225,232,245,0)'); fg.addColorStop(1, 'rgba(225,232,245,.66)'); c.fillStyle = fg; c.fillRect(0, 0, VW, VH); }
     if (sp.kind === 'storm') {
       const ph = (tt * .33 + sp.ph) % 1, fl = ph < .07 ? 1 - ph / .07 : 0;
       if (fl > 0) {
@@ -688,7 +721,7 @@ class Run {
     c.font = 'bold 20px "Trebuchet MS",sans-serif'; c.fillStyle = '#bfe8ff'; c.lineWidth = 4; c.strokeStyle = 'rgba(0,0,0,.7)'; const at = `Akt ${['I', 'II', 'III'][sp.act]} · ${sp.actName}`; c.strokeText(at, VW / 2, VH / 2 - 76); c.fillText(at, VW / 2, VH / 2 - 76);
     c.font = 'bold 40px "Trebuchet MS",sans-serif'; c.lineWidth = 7; c.fillStyle = '#fff';
     const t = `${this.Wd.name} ${this.li + 1}: ${sp.name}`; c.strokeText(t, VW / 2, VH / 2 - 30); c.fillText(t, VW / 2, VH / 2 - 30);
-    const s = [STYLE_TXT[sp.style], ...sp.mods.map(m => MOD_TXT[m])].filter(Boolean).join(' · ');
+    const s = [STYLE_TXT[sp.style], ...sp.mods.map(m => MOD_TXT[m]), WX_TXT[sp.weather]].filter(Boolean).join(' · ');
     c.font = 'bold 22px "Trebuchet MS",sans-serif'; c.fillStyle = '#ffd54a'; c.lineWidth = 5; c.strokeText(s, VW / 2, VH / 2 + 14); c.fillText(s, VW / 2, VH / 2 + 14);
     c.font = '16px sans-serif'; c.fillStyle = '#fff'; c.fillText('Tippen zum Überspringen', VW / 2, VH - 27);
     c.globalAlpha = 1;

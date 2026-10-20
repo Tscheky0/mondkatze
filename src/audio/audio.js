@@ -215,7 +215,7 @@ const AUDIO = (() => {
     let T = T0, sc = SC[T0.sc], root = T0.root, prog = [...T0.A, ...T0.B];
     if (mode === 'tense') { T = Object.assign({}, T0, BOSS_TH, { swing: 0 }); sc = SC.minor; root -= 2; prog = BOSSP; }
     if (mode === 'calm') T = Object.assign({}, T0, { comp: T0.comp === 'stab' ? 'piano' : T0.comp, lead: 'bell', dens: .4, bass: 'sub', pad: 'strings', k: '', s: '', h: '', tim: '', tom: '', p: name === 'map' ? 'o.......o.......' : '' });
-    const bpm = T0.bpm * (mode === 'calm' ? .78 : mode === 'tense' ? 1.14 : 1) * (o.kind === 'night' ? .92 : o.kind === 'storm' ? 1.05 : 1);
+    const bpm = T0.bpm * (mode === 'calm' ? .78 : mode === 'tense' ? 1.14 + .07 * (o.ph || 0) : 1) * (o.kind === 'night' ? .92 : o.kind === 'storm' ? 1.05 : 1);
     const chords = prog.map(([off, qq]) => ({ r: root + off, t: Q[qq] }));
     return { T, sc, root, bpm, mode, chords, lead: melody(r, sc, chords, root, T.dens), sd: 60 / bpm / 4, night: o.kind === 'night' };
   }
@@ -239,7 +239,7 @@ const AUDIO = (() => {
   }
   function tick() { if (!ctx || !seq) return; while (nextT < ctx.currentTime + .3) { schedule(seq, step, nextT); nextT += seq.sd; step++; } }
   function play(name, o) {
-    if (!ctx && !gest) { pend = [name, o]; return; } if (!init()) return; o = o || {}; const k = name + ':' + (o.wi || 0) + ':' + (name === 'level' ? (o.li || 0) + (o.kind || '') : '');
+    if (!ctx && !gest) { pend = [name, o]; return; } if (!init()) return; o = o || {}; const k = name + ':' + (o.wi || 0) + ':' + (name === 'level' ? (o.li || 0) + (o.kind || '') : name === 'boss' ? (o.ph || 0) : '');
     if (k === key) return; key = k; initMusic(); seq = build(name, o); step = 0; nextT = ctx.currentTime + .15;
     clearInterval(timer); timer = setInterval(tick, 40);
     mus.gain.cancelScheduledValues(ctx.currentTime); mus.gain.setValueAtTime(0, ctx.currentTime); setVol();

@@ -79,6 +79,7 @@ input[type=range]{width:100%;accent-color:var(--moon)}
 .grid .card{margin:0}
 .card{border-radius:var(--r-md);padding:13px;margin:8px 0}
 .card h3{margin-top:0}
+.rank{font-size:76px;font-weight:900;line-height:1;margin:2px 0 8px;text-shadow:0 0 26px currentColor,0 4px 0 #0006}
 .badge{display:inline-block;padding:3px 10px;border-radius:var(--r-pill);background:#ffffff26;border:1px solid #ffffff33;font-size:13px;margin:2px}
 .tabs{display:flex;gap:var(--sp-1);flex-wrap:wrap;margin:var(--sp-1) 0}
 .tabs button{padding:8px 14px;font-size:15px}

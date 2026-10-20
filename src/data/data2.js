@@ -45,3 +45,5 @@ const ACTS = [
   [{ n: 'Aschefeld', k: ['dusk', 'dusk'] }, { n: 'Magmaadern', k: ['dusk', 'night'] }, { n: 'Schlund', k: ['night', 'storm'] }],
 ];
 const actOf = (wi, li) => Math.min(2, Math.floor(li * 3 / W[wi].n));
+
+const WX_TXT = { rain: 'Regen – leicht rutschig', sand: 'Sandwind schiebt dich', snow: 'Schnee bremst etwas', fog: 'Nebel – kurze Sicht' };

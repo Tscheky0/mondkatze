@@ -184,6 +184,7 @@ function mdraw() {
     if (nd.t === 'lv' && MOONLV.includes(nd.i) && !save.moons[wi + ':' + nd.i]) { font(15); c.fillText('🌕', p.x + 17, p.y - 19); }
     if (nd.t === 'lv' && nd.i === 4 && (save.bells || {})[wi]) { font(15); c.fillText('🔔', p.x - 17, p.y - 19); }
     { const bm = nd.t === 'lv' && (save.best || {})[wi + ':' + nd.i]; if (bm) { font(13); c.fillText(MEDAL[bm.m], p.x - 17, p.y + 19); } }
+    { const rk = nd.t === 'lv' && (save.rank || {})[wi + ':' + nd.i]; if (rk) { c.font = 'bold 14px "Trebuchet MS",sans-serif'; c.lineWidth = 3; c.strokeStyle = 'rgba(0,0,0,.6)'; c.strokeText(rk, p.x + 18, p.y + 20); c.fillStyle = RCOL[rk]; c.fillText(rk, p.x + 18, p.y + 20); } }
     if (pu < 1) c.restore();
   });
   L.shops.forEach((s, si) => {

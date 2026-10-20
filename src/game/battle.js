@@ -28,7 +28,12 @@ function battle(wi, kind, k, noFilm) {
     $('#stt').innerHTML = `<span>${catImg(save.chars.p1, 30)} ${Math.max(0, st.php)}/${pm}</span><span>🌙 ${'●'.repeat(st.en)}${'○'.repeat(3 - st.en)}</span>`;
   };
   const draw = (mid, ctl) => { $('#mid').innerHTML = mid || ''; $('#ctl').innerHTML = ctl || ''; bars(); };
-  const setPhase = () => { const r = st.bh / BHP; st.phase = r > .66 ? 1 : r > .33 ? 2 : 3; };
+  // Phasenwechsel bei 66% und 33% Leben: Arena-Effekt, Musik wird schneller, der Boss greift haeufiger an
+  const setPhase = () => {
+    const r = st.bh / BHP, np = r > .66 ? 1 : r > .33 ? 2 : 3; if (np === st.phase) return '';
+    st.phase = np; A.rage(np); AUDIO.sfx('roar'); AUDIO.play('boss', { wi, ph: np });
+    return `⚠️ <b>Phase ${np}</b> – ${B.n} ${np === 2 ? 'wird wütend!' : 'rastet völlig aus!'}`;
+  };
 
   function lose() {
     st.over = true; AUDIO.stop(); AUDIO.sfx('lose'); draw('', `<button onclick="battle(${wi},'${kind}',${k},1)">Nochmal</button><button class=d onclick="map({from:${k}})">Karte</button>`); log(`💀 ${B.n} war zu stark!`);
@@ -68,7 +73,7 @@ function battle(wi, kind, k, noFilm) {
   }
   window.bans = resolve;
   function playerTurn() {
-    setPhase(); log('Dein Zug!');
+    { const ph = setPhase(); log((ph ? ph + '<br>' : '') + 'Dein Zug!'); }
     const items = save.load.filter(id => !st.used[id]).map(id => `<button class=d onclick="bitem('${id}')">${ITEM[id].e} ${ITEM[id].n}</button>`).join('');
     const tonic = save.cons.tonic > 0 ? `<button class=d onclick="btonic()">🧪 Mondtrank (${save.cons.tonic})</button>` : '';
     draw('', `<button onclick="batk()">⚔️ Angriff</button><button ${st.en < 3 ? 'disabled' : ''} onclick="bmoon()">🌙 Mondkraft</button>${items}${tonic}`);
@@ -76,7 +81,7 @@ function battle(wi, kind, k, noFilm) {
   function after(dmg, msg, how) {
     st.bh -= dmg; log(msg); draw('', ''); A.hit(dmg, how); if (how === 'moon') { AUDIO.sfx('moon'); setTimeout(() => AUDIO.sfx('bossHit'), 500); } else { AUDIO.sfx('strike'); setTimeout(() => AUDIO.sfx('hit'), 220); } vib(40);
     if (st.bh <= 0) { setTimeout(() => A.win(), 700); return setTimeout(win, 2000); }
-    setPhase(); setTimeout(() => enemyTurn(chain()), 1200);
+    { const ph = setPhase(); if (ph) log(msg + '<br>' + ph); } setTimeout(() => enemyTurn(chain()), 1200);
   }
   window.bgo = () => enemyTurn(1);
   window.batk = () => {
