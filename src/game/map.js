@@ -7,6 +7,7 @@ const MAPTH = [
   { sea: '#5fa4de', land: '#f2f8ff', edge: '#9fc0dc', road: '#cfe6fa', patch: '#d7e8f6', deco: ['🌲', '⛄', '🌲', '🧊', '❄️', '🌲'] },
   { sea: '#7587b0', land: '#b3b8c9', edge: '#767c94', road: '#ece4d2', patch: '#a2a8bd', deco: ['⛰️', '🏔️', '🪨', '🌲', '⛰️', '🏔️'] },
   { sea: '#e8541c', land: '#5b4040', edge: '#2b1616', road: '#f7b873', patch: '#6d4a4a', deco: ['🌋', '🔥', '🪨', '💀', '🔥', '🌋'] },
+  { sea: '#8ec8ff', land: '#fafcff', edge: '#b8cdf0', road: '#ffe9b0', patch: '#e8f0ff', deco: ['☁️', '🌈', '⭐', '🪁', '🕊️', '☁️'] },
 ];
 const mp = document.getElementById('mp'), mx = mp.getContext('2d');
 mp.width = MW * K; mp.height = MH * K;

@@ -25,6 +25,11 @@ const W = [
     enemies: [{ n: 'Lavakrabbe', e: '🦀', hp: 6, b: 'walk', s: 80 }, { n: 'Feuergeist', e: '🔥', hp: 4, b: 'fly', s: 90 }, { n: 'Magma-Schleim', e: '🟠', hp: 7, b: 'hop', s: 60 }],
     mini: { n: 'Flammenwächter', e: '👹', hp: 300, dmg: 16, atk: ['Feuerfaust', 'Glutfeger', 'Aschenfluch'], bg: '#6e1d12' },
     boss: { n: 'Mondverschlinger', e: '🐲', hp: 800, dmg: 19, atk: ['Drachenklaue', 'Schwanzfeger', 'Inferno'], bg: '#3b0d0d' } },
+  // Bonuswelt nach dem Ende: das Himmelreich ueber dem Mond
+  { name: 'Himmel', emoji: '☁️', n: 16, sky: ['#7fb8ff', '#fff0fa'], top: '#ffffff', dirt: '#c4d6f4', hill: '#e6eeff', ice: 0,
+    enemies: [{ n: 'Wolkenschaf', e: '🐑', hp: 8, b: 'walk', s: 75 }, { n: 'Windgeist', e: '🌬️', hp: 6, b: 'fly', s: 100 }, { n: 'Funkenhüpfer', e: '⚡', hp: 9, b: 'hop', s: 65 }],
+    mini: { n: 'Wolken-Wächter', e: '🛡️', hp: 380, dmg: 19, atk: ['Lanzenstoß', 'Windschnitt', 'Blitzschild'], bg: '#4a6aa8' },
+    boss: { n: 'Sternenwächter', e: '🦉', hp: 1000, dmg: 23, atk: ['Federsturm', 'Sternschnuppe', 'Mondlicht-Strahl'], bg: '#1a1e4a' } },
 ];
 
 // fx: hp spd jmp xj dmg time shield mag shot regen s2 rev
@@ -53,6 +58,10 @@ const ITEMS = [
   { id: 'i51', w: 5, n: 'Magmaklinge', e: '⚔️', d: '+2 Schaden', fx: { dmg: 2 } },
   { id: 'i52', w: 5, n: 'Aschenstiefel', e: '👢', d: '+25% Tempo', fx: { spd: .25 } },
   { id: 'i53', w: 5, n: 'Phönixfeder', e: '🔱', d: 'Wiederbelebung (1x)', fx: { rev: 1 } },
+  { id: 'i60', w: 6, n: 'Wolkenschuhe', e: '👟', d: '+30% Tempo', fx: { spd: .3 } },
+  { id: 'i61', w: 6, n: 'Sternenstaub', e: '✨', d: 'Doppelte Splitter, +25s', fx: { s2: 1, time: 25 } },
+  { id: 'i62', w: 6, n: 'Windfeder', e: '🪽', d: 'Doppelsprung, höher', fx: { xj: 1, jmp: .1 } },
+  { id: 'i63', w: 6, n: 'Himmelsschwert', e: '🗡️', d: '+3 Schaden', fx: { dmg: 3 } },
 ];
 const ITEM = Object.fromEntries(ITEMS.map(i => [i.id, i]));
 
@@ -105,6 +114,7 @@ const STORY = {
     [{ w: 'luna', t: 'Brr, eisiger Wind. Die Pfotenspuren des Drachen führen hoch ins weiße Land.' }],
     [{ w: 'luna', t: 'Der Pass ist steil. Von hier oben sehe ich schon den Vulkan glühen. Halte durch, Chey!' }],
     [{ w: 'chey', t: 'Luna?! Ich höre dich! Ich bin im Käfig ganz oben im Vulkan!' }, { w: 'luna', t: 'Ich komme, Chey. Nichts hält mich mehr auf!' }],
+    [{ w: 'narr', t: 'Nach dem Sieg öffnet sich über dem Mond ein Pfad aus Licht: das Himmelreich. Dort fallen die Sterne vom Himmel.' }, { w: 'luna', t: 'Chey, Minsch – wollen wir sehen, was da oben los ist?' }],
   ],
   mini: [
     [{ w: 'boss', e: '🌳', t: 'Ein Drache flog über den Wald… mit einem kleinen Schatten in den Krallen. Er hielt auf den Dschungel zu.' }],
@@ -113,6 +123,7 @@ const STORY = {
     [{ w: 'boss', e: '🦣', t: 'Der Drache mied das Eis und flog zu den Bergen. Dort ist der Weg zum Feuer.' }],
     [{ w: 'boss', e: '🤖', t: 'Hinter diesem Pass beginnt das Reich aus Feuer. Kein Wesen kehrt von dort zurück…' }],
     [{ w: 'boss', e: '👹', t: 'Nur noch der Mondverschlinger steht zwischen dir und Chey. Geh, wenn du dich traust.' }],
+    [{ w: 'boss', e: '🛡️', t: 'Nur wer die Wolkenbrücke bezwingt, darf zu den Sternen. Zeig, dass du fliegen kannst!' }],
   ],
   boss: [
     [{ w: 'boss', e: '🌲', t: 'Nimm die Mondsplitter, die ich verwahrte. Der Weg zum Dschungel ist frei.' }, { w: 'luna', t: 'Danke. Chey, ich komme!' }],
@@ -120,6 +131,8 @@ const STORY = {
     [{ w: 'boss', e: '🗿', t: 'Der Sand hat dich geprüft. Das Eisland liegt im Norden.' }],
     [{ w: 'boss', e: '🧊', t: 'Das Eis zerbricht… Die Berge warten auf dich. Nimm dich vor dem Donnervogel in Acht.' }],
     [{ w: 'boss', e: '🦅', t: 'Der Himmel gehört dir. Dahinter liegt nur noch Feuer – und der Mondverschlinger.' }],
+    [],
+    [{ w: 'boss', e: '🦉', t: 'Du hast die Sterne bestanden. Der Himmel ist jetzt dein Zuhause, Mondkatze.' }, { w: 'narr', t: 'Das Himmelreich ist befreit – die Sterne leuchten wieder, heller als je zuvor.' }],
   ],
   end: [
     { w: 'luna', t: 'Es ist vorbei, Verschlinger! Gib den Mond zurück!' },
@@ -136,6 +149,7 @@ const STORY = {
     { mini: 'Wer meinen Schnee betritt, friert fest.', boss: 'Erstarre im ewigen Eis!' },
     { mini: 'Meine Fäuste sind aus Fels!', boss: 'Der Sturm trägt dich davon!' },
     { mini: 'Das Feuer wird dich verzehren!', boss: 'Ich habe den Mond verschlungen – jetzt verschlinge ich dich!' },
+    { mini: 'Kein Wesen ohne Flügel kommt hier vorbei!', boss: 'Die Sterne gehören mir. Zeig, was du kannst!' },
   ],
 };
 
@@ -147,6 +161,7 @@ const SHOPS = [
   [{ n: 'Eis-Kiosk', o: '🐧' }, { n: 'Pelz-Laden', o: '🦭' }],
   [{ n: 'Gipfel-Hütte', o: '🐐' }, { n: 'Steinmetz', o: '🦅' }],
   [{ n: 'Glut-Schmiede', o: '🦀' }, { n: 'Asche-Markt', o: '🔥' }],
+  [{ n: 'Wolken-Café', o: '🕊️' }, { n: 'Sternen-Markt', o: '🦉' }],
 ];
 const CONS = [
   { id: 'heart', e: '🍪', n: 'Herzkeks', d: '+1 Herz im nächsten Level', p: 15 },

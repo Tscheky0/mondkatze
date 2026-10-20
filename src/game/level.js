@@ -149,7 +149,7 @@ function genLevel(wi, li, seed) {
 
 // ---------- Geheimraeume ----------
 const SWAP = ['g', 'cols', 'spots', 'gaps', 'ent', 'pick', 'drops', 'movers', 'springs', 'fire', 'eshots', 'shots', 'rocks', 'warn', 'cr', 'flagX', 'flagY', 'moonPos', 'doors'];
-const SWARM_E = ['🐜', '🦟', '🦗', '🐭', '🐦', '🪳'];
+const SWARM_E = ['🐜', '🦟', '🦗', '🐭', '🐦', '🪳', '✨'];
 function genRoom(kind, wi, li) {
   const cols = 30, FL = 14, g = [];
   for (let y = 0; y < ROWS; y++) g.push(new Uint8Array(cols));
@@ -554,7 +554,7 @@ class Run {
 
   drawTile(c, v, tx, ty, st) {
     const sp = this.sp, wi = this.wi, x = tx * TS, y = ty * TS, h = hash(tx * 73856093 ^ ty * 19349663), pl = PLAT[wi];
-    if (v === 2) { c.fillStyle = wi === 3 ? '#9fd8ff' : wi === 5 ? '#ff7a2a' : '#ccd'; for (let k = 0; k < 2; k++) { c.beginPath(); c.moveTo(x + k * 16, y + TS); c.lineTo(x + k * 16 + 8, y + TS / 2); c.lineTo(x + k * 16 + 16, y + TS); c.fill(); } return; }
+    if (v === 2) { c.fillStyle = wi === 3 ? '#9fd8ff' : wi === 5 ? '#ff7a2a' : wi === 6 ? '#ffd24a' : '#ccd'; for (let k = 0; k < 2; k++) { c.beginPath(); c.moveTo(x + k * 16, y + TS); c.lineTo(x + k * 16 + 8, y + TS / 2); c.lineTo(x + k * 16 + 16, y + TS); c.fill(); } return; }
     if (v === 7) {
       const gg = c.createLinearGradient(x, 0, x + TS, 0); gg.addColorStop(0, '#6a5a2a'); gg.addColorStop(.5, '#d8b84a'); gg.addColorStop(1, '#5a4a1e');
       c.fillStyle = gg; c.fillRect(x + 6, y, TS - 12, TS); c.fillStyle = 'rgba(0,0,0,.25)'; c.fillRect(x + TS / 2 - 1, y, 2, TS); c.fillStyle = '#fff3b0'; c.fillRect(x + 8, y, 3, TS);
@@ -592,7 +592,7 @@ class Run {
       c.fillStyle = 'rgba(0,0,0,.2)'; c.fillRect(x, y + 10, TS + 1, 2);
       c.fillStyle = sp.pal.top;
       if (wi < 2) { for (let k = 0; k < 5; k++) { const bx = x + (h >>> (k * 3)) % 28; c.beginPath(); c.moveTo(bx, y); c.lineTo(bx + 1, y - 4 - k % 3); c.lineTo(bx + 3, y); c.fill(); } if (h % 7 === 0) { c.fillStyle = h % 2 ? '#fff' : '#ffd54a'; c.beginPath(); c.arc(x + 6 + h % 20, y - 3, 2, 0, 7); c.fill(); } }
-      else if (wi === 3) { c.fillStyle = '#fff'; c.beginPath(); c.arc(x + 8 + h % 8, y + 2, 7, Math.PI, 0); c.arc(x + 22, y + 2, 6, Math.PI, 0); c.fill(); c.fillStyle = 'rgba(160,200,235,.6)'; c.fillRect(x + 4, y + 9, 3, 5 + h % 5); c.fillRect(x + 20, y + 9, 3, 4 + h % 6); }
+      else if (wi === 3 || wi === 6) { c.fillStyle = '#fff'; c.beginPath(); c.arc(x + 8 + h % 8, y + 2, 7, Math.PI, 0); c.arc(x + 22, y + 2, 6, Math.PI, 0); c.fill(); c.fillStyle = 'rgba(160,200,235,.6)'; c.fillRect(x + 4, y + 9, 3, 5 + h % 5); c.fillRect(x + 20, y + 9, 3, 4 + h % 6); }
       else if (wi === 2) { c.fillStyle = 'rgba(0,0,0,.1)'; c.fillRect(x + 4, y + 3, 14, 2); c.fillRect(x + 14, y + 6, 12, 1.5); }
       else if (wi === 4) { c.strokeStyle = 'rgba(0,0,0,.28)'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(x + 6, y); c.lineTo(x + 10, y + 8); c.lineTo(x + 8, y + 12); c.stroke(); }
       else if (wi === 5 && !st) { c.fillStyle = `rgba(255,${100 + (h % 80)},30,${.5 + .3 * Math.sin(this.animT * 3 + tx)})`; c.fillRect(x + 4 + h % 12, y + 3, 10, 2); }

@@ -218,6 +218,33 @@ Object.assign(CR, {
     const m = .5 + .5 * Math.sin(t * .9); c.fillStyle = `rgba(255,246,200,${.5 + .4 * m})`; c.beginPath(); c.arc(-5, 10, 3, 0, 7); c.fill(); },
 });
 
+Object.assign(CR, {
+  // ---------- Himmel ----------
+  'Wolkenschaf': (c, t) => { const b = Math.sin(t * 1.4) * 1.2, l = Math.sin(t * 1.6) * 2;
+    for (const x of [-8, -2, 5, 11]) _l(c, [[x, 10], [x + (x % 2 ? l : -l), 19]], '#3a4a78', 2.6);
+    for (const [x, y, r] of [[-10, 3 + b, 8], [-3, -2 - b, 9], [5, 0 + b, 9], [-1, 7, 9], [10, 5 - b, 7]]) _e(c, x, y, r, r, '#fdfdff', '#9fb0d8', 1.2);
+    _e(c, 14, 0, 6.4, 6, '#3a4a78', '#1e284a', 1.4); _e(c, 12, -1, 1.5, 1.7, '#fff'); _e(c, 17, -1, 1.5, 1.7, '#fff'); _e(c, 12.4, -.8, .7, .8, '#101828'); _e(c, 17.4, -.8, .7, .8, '#101828');
+    _p(c, [[10, -6], [12, -11], [14, -6]], '#3a4a78'); _l(c, [[13, 3], [16, 3.4]], '#101828', 1.2); },
+  'Windgeist': (c, t) => { const s = Math.sin(t * 2.2) * 3; c.lineCap = 'round'; c.strokeStyle = 'rgba(190,225,255,.85)'; c.lineWidth = 3.4;
+    for (let k = 0; k < 3; k++) { c.beginPath(); c.moveTo(-18, 6 + k * 3); c.bezierCurveTo(-8, 0 + s + k * 2, 0, 14 - s, 8, 2 + k); c.stroke(); }
+    _e(c, 6, 0, 9, 9, 'rgba(235,246,255,.92)', '#9ac4ee', 1.4); _e(c, 3, -2, 1.8, 2.4, '#2a4a8a'); _e(c, 9, -2, 1.8, 2.4, '#2a4a8a'); _e(c, 6, 4, 2.6, 1.6, '#2a4a8a');
+    c.strokeStyle = 'rgba(255,255,255,.9)'; c.lineWidth = 1.6; c.beginPath(); c.arc(6, 0, 12 + s * .3, 3.6, 5.2); c.stroke(); },
+  'Funkenhüpfer': (c, t) => { const j = Math.abs(Math.sin(t * 1.6));
+    _p(c, [[-9, 6], [-17, 2], [-12, 5], [-19, -3], [-10, 3]], '#ffd23a', '#c88a00', 1.2);
+    _e(c, 0, 5 - j * 2, 12, 11 + j, '#ffe04a', '#c89a00', 1.6); _e(c, 2, 8 - j * 2, 7, 6, '#fff3a8');
+    _eye(c, 4, 2, 3, 1); _eye(c, 10, 2, 3, 1); _l(c, [[4, 9], [8, 11], [12, 9]], '#7a4a00', 1.5);
+    for (let i = 0; i < 3; i++) { const a = t * 3 + i * 2.1; _l(c, [[Math.cos(a) * 13, 4 + Math.sin(a) * 12], [Math.cos(a) * 17 + 2, 4 + Math.sin(a) * 16 - 3]], '#fff6a0', 1.4); } },
+  'Wolken-Wächter': (c, t) => { const b = Math.sin(t * .8) * 1.5;
+    for (const [x, y, r] of [[-12, 10, 8], [-4, 12, 9], [6, 12, 9], [13, 9, 7]]) _e(c, x, y, r, r * .8, '#e8f0ff', '#9fb0d8', 1.4);
+    _p(c, [[-9, -4 + b], [9, -4 + b], [11, 10], [-11, 10]], '#aab8d8', '#4a5a88', 1.8);
+    _e(c, 0, -10 + b, 8, 8.4, '#c8d4ec', '#4a5a88', 1.7); _p(c, [[-6, -11 + b], [6, -11 + b], [5, -6 + b], [-5, -6 + b]], '#1a2040'); _l(c, [[-4, -9 + b], [4, -9 + b]], '#7fe0ff', 1.8);
+    _p(c, [[-1, -18 + b], [1, -18 + b], [3, -24 + b], [-3, -24 + b]], '#ff6a6a', '#8a2a2a', 1);
+    _e(c, -15, 2, 6, 8, '#4a6ad8', '#1e2a68', 1.6); _p(c, [[-15, -3], [-12, 2], [-15, 7], [-18, 2]], '#ffe06a');
+    _l(c, [[13, -14], [13, 16]], '#8a7a5a', 2); _p(c, [[13, -20], [16, -14], [10, -14]], '#e8eef8', '#4a5a88', 1.2); },
+  'Schwarm6': (c, t) => { const s = Math.sin(t * 2) * 2;
+    for (const [x, y, r] of [[-6, 2 + s, 5], [5, -3 - s, 4], [2, 8, 3.4]]) { c.save(); c.translate(x, y); c.rotate(t * .8 + x); _p(c, [[0, -r], [r * .35, -r * .35], [r, 0], [r * .35, r * .35], [0, r], [-r * .35, r * .35], [-r, 0], [-r * .35, -r * .35]], '#ffe66a', '#c89a00', .8); c.restore(); } },
+});
+
 const CR_ALIAS = { 'Schwarm': 'Schwarm' };
 function crKey(t, wi) { return t.b === 'swarm' ? 'Schwarm' + wi : t.n; }
 function drawCreature(c, name, x, y, s, face, t, o) {

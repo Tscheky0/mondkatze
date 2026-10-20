@@ -109,6 +109,16 @@ function drawWorldDeco(c, wi, sp, cam, t, W_, H_) {
       for (let p = 0; p < 4; p++) { const ph = (t * .4 + p / 4 + i * .3) % 1; c.fillStyle = `rgba(60,40,40,${.4 * (1 - ph)})`; c.beginPath(); c.arc(x + 115 + Math.sin(t + p) * 8 + ph * 18, H_ - 120 - h - ph * 80, 8 + ph * 16, 0, 7); c.fill(); }
     }
   }
+  else if (wi === 6) {
+    if (!night) { const cx = W_ * .55 - cam * .03; for (let i = 0; i < 6; i++) { c.strokeStyle = ['rgba(255,106,106,.28)', 'rgba(255,176,106,.28)', 'rgba(255,232,106,.28)', 'rgba(122,255,154,.26)', 'rgba(106,184,255,.28)', 'rgba(184,138,255,.28)'][i]; c.lineWidth = 8; c.beginPath(); c.arc(cx, H_ + 40, 420 - i * 8, Math.PI * 1.1, Math.PI * 1.9); c.stroke(); } }
+    for (let i = 0; i < 3; i++) {
+      const x = wrap(i * 440 - cam * .12, W_ + 300) - 150, y = 150 + i * 46 + Math.sin(t * .8 + i) * 6; c.fillStyle = night ? 'rgba(60,70,140,.5)' : 'rgba(150,170,225,.38)';
+      c.beginPath(); c.ellipse(x, y, 62, 11, 0, 0, 7); c.fill(); c.beginPath(); c.moveTo(x - 52, y + 3); c.lineTo(x + 52, y + 3); c.lineTo(x + 22, y + 40); c.lineTo(x - 22, y + 40); c.closePath(); c.fill();
+      c.fillStyle = night ? 'rgba(90,110,170,.6)' : 'rgba(110,190,150,.5)'; c.beginPath(); c.arc(x - 18, y - 6, 9, 0, 7); c.arc(x - 6, y - 10, 11, 0, 7); c.fill();
+    }
+    c.fillStyle = night ? 'rgba(130,140,220,.28)' : 'rgba(255,255,255,.6)'; for (let i = 0; i < 9; i++) { const x = wrap(i * 150 - cam * .25 + t * 5, W_ + 200) - 100; c.beginPath(); c.ellipse(x, H_ - 100 + (i % 3) * 10, 90, 24, 0, 0, 7); c.fill(); }
+    if (night) for (let i = 0; i < 18; i++) { const a = Math.max(0, Math.sin(t * 1.6 + i * 2.3)), x = wrap(i * 97 - cam * .05, W_), y = 30 + (i * 53) % 220; c.fillStyle = `rgba(255,240,170,${a * .9})`; c.fillRect(x - 1, y - 1, 3, 3); }
+  }
   c.restore();
 }
 

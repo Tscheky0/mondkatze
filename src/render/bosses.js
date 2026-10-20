@@ -183,3 +183,31 @@ Object.assign(CR, {
     for (let i = 0; i < 8; i++) { const ph = (T * .5 + i / 8) % 1; c.fillStyle = `rgba(255,${120 + (i * 20) % 100},40,${1 - ph})`; c.fillRect(-26 + i * 7 + Math.sin(T * 2 + i) * 3, 20 - ph * 44, 1.6, 1.6); }
   },
 });
+
+// ---------- Sternenwaechter (Himmel): kosmische Eule mit Sternenfluegeln ----------
+const _star = (c, x, y, r, col) => { c.save(); c.translate(x, y); c.fillStyle = col; c.beginPath(); for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4, rr = i % 2 ? r * .4 : r; c.lineTo(Math.sin(a) * rr, -Math.cos(a) * rr); } c.closePath(); c.fill(); c.restore(); };
+Object.assign(CR, {
+  'Sternenwächter': (c, t) => {
+    const T = t * .1, fl = Math.sin(T * 3.2), br = 1 + Math.sin(T * 2) * .02;
+    _glow(c, 0, -2, 40, '150,170,255', .22 + .08 * Math.sin(T * 4));
+    for (const d of [-1, 1]) for (let L = 0; L < 3; L++) {
+      const sc = 1 - L * .14, col = ['#1e2468', '#343c9a', '#6a74d8'][L], y0 = -fl * 6 * (1 - L * .2);
+      _poly(c, [[d * 5, -4], [d * 14 * sc, -16 * sc + y0], [d * 22 * sc, -14 * sc + y0], [d * 28 * sc, -4 + y0 * .7], [d * 27 * sc, 6], [d * 19 * sc, 10], [d * 8, 8]], _lg(c, 0, -16, 0, 10, [shade(col, .2), col, shade(col, -.3)]), L ? 'rgba(255,224,106,.6)' : '#ffe06a', 1.2);
+    }
+    for (let i = 0; i < 6; i++) _star(c, (i % 2 ? 1 : -1) * (10 + i * 2.6), -8 + (i % 3) * 5 - fl * 2, 1.6, `rgba(255,240,170,${.5 + .5 * Math.sin(T * 4 + i)})`);
+    for (let i = 0; i < 6; i++) { const a = T * 1.6 + i * 1.047; _star(c, Math.cos(a) * 25, -2 + Math.sin(a) * 14, 2.4 + (i % 2), '#ffe98a'); }
+    c.save(); c.translate(0, 16); c.scale(1, br); c.translate(0, -16);
+    for (const x of [-4, 4]) { _l(c, [[x, 14], [x, 19]], '#c8a020', 1.8); for (let k = -1; k <= 1; k++) _l(c, [[x, 19], [x + k * 2.4, 22.4]], '#ffcf3a', 1.2); }
+    _ball(c, 0, 3, 11.4, 13.4, '#2a3080', '#10143a', 1.5); _ball(c, 0, 6, 7, 9.4, '#6a74d8');
+    for (let i = 0; i < 7; i++) _star(c, -3 + (i % 3) * 3, -1 + Math.floor(i / 3) * 4.2, 1.1, `rgba(255,240,170,${.4 + .6 * Math.abs(Math.sin(T * 3 + i * 1.7))})`);
+    _ball(c, 0, -12, 9.4, 8.8, '#343a90', '#10143a', 1.4);
+    _poly(c, [[-8, -17], [-11, -25], [-4, -19]], '#343a90', '#10143a', 1); _poly(c, [[8, -17], [11, -25], [4, -19]], '#343a90', '#10143a', 1);
+    _e(c, 0, -12, 7, 6.2, '#f6f0ff', '#8a8ad0', 1.1);
+    _eyeGlow(c, -3.2, -12, 2.6, 2.6, '255,230,110', '#fff2b0'); _eyeGlow(c, 3.2, -12, 2.6, 2.6, '255,230,110', '#fff2b0'); _e(c, -3.2, -12, 1, 1.4, '#10143a'); _e(c, 3.2, -12, 1, 1.4, '#10143a');
+    _poly(c, [[-1.6, -9.6], [1.6, -9.6], [0, -6]], '#ffcf3a', '#8a6a00', .9);
+    _l(c, [[-6, -16], [-1.6, -14.4]], '#10143a', 1.4); _l(c, [[6, -16], [1.6, -14.4]], '#10143a', 1.4);
+    c.restore();
+    _glow(c, 0, -26, 10, '255,230,140', .5 + .2 * Math.sin(T * 3));
+    c.fillStyle = '#ffe06a'; c.beginPath(); c.arc(0, -26, 6, 0, 7); c.fill(); c.fillStyle = '#1a1e4a'; c.beginPath(); c.arc(2.6, -27, 5.2, 0, 7); c.fill();
+  },
+});

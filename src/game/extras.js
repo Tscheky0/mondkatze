@@ -84,18 +84,18 @@ function album(tab) {
   show('ui'); tab = tab || 'foes'; const k = save.stats.kills || {};
   const tabs = [['foes', '👾 Gegner'], ['boss', '👑 Bosse'], ['items', '🎒 Items'], ['ach', '🏆 Erfolge']];
   let h = `<div class=hd><h2>📖 Album</h2><button class=d onclick="showTitle()">Zurück</button></div><div class=tabs>${tabs.map(t => `<button class="${t[0] === tab ? 'on' : 'd'}" onclick="album('${t[0]}')">${t[1]}</button>`).join('')}</div>`;
-  if (tab === 'foes') for (let wi = 0; wi < 6; wi++) {
+  if (tab === 'foes') for (let wi = 0; wi < W.length; wi++) {
     h += `<div class=card><b>${W[wi].emoji} ${W[wi].name}</b><div class=row>`;
     for (const n of [...W[wi].enemies.map(e => e.n), 'Schwarm' + wi]) { const c = k[n] || 0; h += `<div style="text-align:center;width:92px">${creatureImg(n, 64, !c)}<br><small>${c ? (n.startsWith('Schwarm') ? 'Schwarm' : n) : '???'}</small><br><span class=badge>${c}×</span></div>`; }
     h += '</div></div>';
   }
-  else if (tab === 'boss') for (let wi = 0; wi < 6; wi++) {
+  else if (tab === 'boss') for (let wi = 0; wi < W.length; wi++) {
     h += `<div class=card><b>${W[wi].emoji} ${W[wi].name}</b><div class=row>`;
     for (const kind of ['mini', 'boss']) { const B = W[wi][kind], got = save.cleared[wi + ':' + kind]; h += `<div style="text-align:center;width:130px">${creatureImg(B.n, 96, !got)}<br><small>${got ? B.n : '???'}</small><br><span class=badge>${kind === 'boss' ? '👑 Boss' : '⚔️ Wächter'}</span></div>`; }
     h += '</div></div>';
   }
   else if (tab === 'items') {
-    h += `<p>Items: ${Object.keys(save.own).length}/${ITEMS.length} · Kleidung: ${Object.keys(save.cos.own).length}/${COS.length} · Glöckchen: ${Object.keys(save.bells).length}/6 · Große Monde: ${Object.keys(save.moons).length}/30 · Geheimräume: ${save.stats.secrets || 0}</p>`;
+    h += `<p>Items: ${Object.keys(save.own).length}/${ITEMS.length} · Kleidung: ${Object.keys(save.cos.own).length}/${COS.length} · Glöckchen: ${Object.keys(save.bells).length}/${W.length} · Große Monde: ${Object.keys(save.moons).length}/${W.length * 5} · Geheimräume: ${save.stats.secrets || 0}</p>`;
     for (const it of ITEMS) h += save.own[it.id] ? `<div class=it><div class=e>${it.e}</div><b>${it.n}</b><br>${it.d}</div>` : `<div class=it style="opacity:.4"><div class=e>❔</div>${W[it.w].emoji}</div>`;
     h += '<h3>Kleidung</h3>'; for (const x of COS) h += save.cos.own[x.id] ? `<div class=it><div class=e>${x.e}</div><b>${x.n}</b></div>` : `<div class=it style="opacity:.4"><div class=e>❔</div>${W[x.w].emoji}</div>`;
   } else {

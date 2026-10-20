@@ -16,13 +16,13 @@ ADM.overlay = (c, r) => {
 ADM.tick = () => { const n = performance.now(); ADM._f++; if (n - ADM._t > 500) { ADM.fpsV = Math.round(ADM._f * 1000 / (n - ADM._t)); ADM._f = 0; ADM._t = n; } };
 
 function admFull() {
-  for (let w = 0; w < 6; w++) { const N = nodes(w); save.prog[w] = N.length; N.forEach(nd => { if (nd.t === 'lv') save.cleared[w + ':' + nd.i] = 1; else save.cleared[w + ':' + nd.t] = 1; }); }
+  for (let w = 0; w < W.length; w++) { const N = nodes(w); save.prog[w] = N.length; N.forEach(nd => { if (nd.t === 'lv') save.cleared[w + ':' + nd.i] = 1; else save.cleared[w + ':' + nd.t] = 1; }); }
   persist(); checkAch(); admMsg('Alle Welten und Level freigeschaltet.');
 }
 function admAll() {
   ITEMS.forEach(i => save.own[i.id] = 1); COS.forEach(x => save.cos.own[x.id] = 1);
   SKILLS.forEach(b => b.list.forEach(s => save.skills[s.id] = s.max)); save.shards = Math.max(save.shards, 3000);
-  for (let w = 0; w < 6; w++) { save.bells[w] = 1; MOONLV.forEach(l => save.moons[w + ':' + l] = 1); }
+  for (let w = 0; w < W.length; w++) { save.bells[w] = 1; MOONLV.forEach(l => save.moons[w + ':' + l] = 1); }
   persist(); checkAch(); admMsg('Alle Items, Kleidung, Fähigkeiten, Glöckchen und Monde.');
 }
 function admMsg(t) { const m = document.getElementById('admMsg'); if (m) m.textContent = '✔ ' + t; toast('🛠 ' + t); if (mode === 'map') hud(); }
