@@ -157,6 +157,8 @@ input[type=range]{width:100%;accent-color:var(--moon)}
 
 html.gp #tc b{opacity:.3}
 html.gp button:focus,html.gp .it:focus,html.gp summary:focus{outline:3px solid var(--moon);outline-offset:3px;transform:scale(1.05);filter:brightness(1.15)}
+#gphint{position:absolute;right:12px;bottom:12px;display:none;padding:7px 14px;font-size:12px;font-weight:700;border-radius:var(--r-pill);pointer-events:none;background:linear-gradient(145deg,#ffffff33,#ffffff0d),#1208288c;border:1px solid var(--line);box-shadow:0 4px 14px #0a022073,inset 0 1px 0 #ffffff59;max-width:60vw;text-align:right}
+html.gp #gphint{display:block}
 html.lowfx *{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 @media (max-height:480px){.title{margin-top:0;padding:14px}.title h1{font-size:36px}}
