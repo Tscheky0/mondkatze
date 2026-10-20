@@ -78,7 +78,7 @@ function arenaMount(host, wi, kind) {
     if (l.pose === 'moon') { const u = cl(l.t / .4, 0, 1); ly -= 70 * Math.sin(u * Math.PI); air = u < 1; }
     if (l.pose === 'focus') for (let i = 0; i < 3; i++) { const u = ((l.t * 1.8 + i / 3) % 1); c.strokeStyle = `rgba(255,213,74,${1 - u})`; c.lineWidth = 4; c.beginPath(); c.arc(lx, ly + 5, 20 + u * 70, 0, 7); c.stroke(); }
     c.fillStyle = 'rgba(0,0,0,.28)'; c.beginPath(); c.ellipse(lx, GY + 4, 38, 8, 0, 0, 7); c.fill();
-    drawCat(c, lx, ly, 100, 1, t * 10, { run, air }, PAL.luna); c.globalAlpha = 1;
+    drawCat(c, lx, ly, 100, 1, t * 10, { run, air }, selPal()); c.globalAlpha = 1;
     if (l.pose === 'guard') { c.strokeStyle = `rgba(127,232,255,${.6 + .3 * Math.sin(l.t * 20)})`; c.lineWidth = 8; c.beginPath(); c.arc(lx + 40, ly, 70, -1.2, 1.2); c.stroke(); c.fillStyle = 'rgba(127,232,255,.18)'; c.fill(); }
     if (l.pose === 'attack' && l.t > .15 && l.t < .35) { const u = (l.t - .15) / .2; c.strokeStyle = `rgba(255,255,255,${1 - u * .6})`; c.lineWidth = 10; c.beginPath(); c.arc(lx + 40, ly, 60, -1 + u, 1 + u * .6); c.stroke(); }
     if (l.pose === 'moon' && l.t > .15) { const u = cl((l.t - .15) / .35, 0, 1), x = lerp(LX + 40, BX - 60, u), y = lerp(ly - 30, GY - 100, u); c.font = EMF(80); c.shadowColor = '#fff6c8'; c.shadowBlur = 30; c.fillStyle = '#000'; c.fillText('🌙', x, y); c.shadowBlur = 0; }

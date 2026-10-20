@@ -195,7 +195,8 @@ function mdraw() {
   c.fillStyle = 'rgba(0,0,0,.22)'; c.beginPath(); c.ellipse(MV.x, MV.y + 6, 15, 5, 0, 0, 7); c.fill();
   if (wi === 5) { c.fillStyle = 'rgba(255,120,30,.55)'; for (let i = 0; i < 14; i++) { const ex = (i * 173 + Math.sin(t + i) * 24) % MW, ey = MH - ((i * 61 + t * 38) % MH); c.fillRect(ex, ey, 2.5, 2.5); } }
   const cyc = t % 4, hop = !MV.moving && cyc < .6 ? Math.abs(Math.sin(cyc / .6 * Math.PI)) * 14 : 0;
-  drawCat(c, MV.x, MV.y - 14 - hop, 46, MV.face, t * 10, { run: MV.moving, air: hop > 2 }, PAL.luna);
+  drawCat(c, MV.x, MV.y - 14 - hop, 46, MV.face, t * 10, { run: MV.moving, air: hop > 2 }, selPal());
+  if (save.chars.coop) drawCat(c, MV.x - 26 * MV.face, MV.y - 10 - hop * .7, 38, MV.face, t * 10 + 3, { run: MV.moving, air: hop > 2 }, PAL[save.chars.p2]);
   drawVignette(c, MW, MH);
   const tot = L.M, done = Math.min(pr, tot), bw = 200, bx = 14, by = MH - 44;
   glassRect(c, bx, by, bw, 30, 15);

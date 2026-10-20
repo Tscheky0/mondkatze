@@ -25,7 +25,7 @@ function battle(wi, kind, k, noFilm) {
   const log = t => { $('#tl').innerHTML = t; };
   const bars = () => {
     $('#bhb').style.width = Math.max(0, st.bh) / BHP * 100 + '%'; $('#pbar').style.width = Math.max(0, st.php) / pm * 100 + '%'; $('#phs').textContent = 'Phase ' + st.phase;
-    $('#stt').innerHTML = `<span>${catImg('luna', 30)} ${Math.max(0, st.php)}/${pm}</span><span>🌙 ${'●'.repeat(st.en)}${'○'.repeat(3 - st.en)}</span>`;
+    $('#stt').innerHTML = `<span>${catImg(save.chars.p1, 30)} ${Math.max(0, st.php)}/${pm}</span><span>🌙 ${'●'.repeat(st.en)}${'○'.repeat(3 - st.en)}</span>`;
   };
   const draw = (mid, ctl) => { $('#mid').innerHTML = mid || ''; $('#ctl').innerHTML = ctl || ''; bars(); };
   const setPhase = () => { const r = st.bh / BHP; st.phase = r > .66 ? 1 : r > .33 ? 2 : 3; };

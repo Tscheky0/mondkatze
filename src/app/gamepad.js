@@ -3,7 +3,7 @@
 // Menues: Steuerkreuz/Stick wechseln den Fokus, Kreuz bestaetigt, Kreis geht zurueck. Karte: links/rechts laufen, Kreuz starten.
 const GP = (() => {
   const B = { cross: 0, circle: 1, square: 2, tri: 3, l1: 4, r1: 5, l2: 6, r2: 7, options: 9, up: 12, down: 13, left: 14, right: 15 };
-  const DZ = .4; let pad = null, prev = {}, held = {}, rep = {}, last = 0, active = false, curMode = '', lock = false, hudMode = false;
+  const DZ = .4; let pad = null, prev = {}, held = {}, rep = {}, last = 0, active = false, curMode = '', lock = false, hudMode = false, held2 = {};
   const pressed = (g, i) => !!(g.buttons[i] && g.buttons[i].pressed);
   const edge = (k, v) => { const e = v && !prev[k]; prev[k] = v; return e; };
   // Tastendruck mit Wiederholung (fuer Menues): sofort, dann nach .35s alle .12s
@@ -33,19 +33,29 @@ const GP = (() => {
   }
   const key = k => dispatchEvent(new KeyboardEvent('keydown', { key: k }));
 
+  // Ein Controller steuert eine Katze (sIn = setIn fuer Spieler 1 oder setIn2 fuer Spieler 2)
+  function drive(gg, H, pre, sIn) {
+    const ax = gg.axes[0] || 0, ay = gg.axes[1] || 0, l = pressed(gg, B.left) || ax < -DZ, r = pressed(gg, B.right) || ax > DZ, d = pressed(gg, B.down) || ay > DZ + .2;
+    const set = (k, v, c) => { if (H[k] !== v) { H[k] = v; sIn(c, v ? 1 : 0); } };
+    set('l', l, 'l'); set('r', r, 'r'); set('j', pressed(gg, B.cross) || pressed(gg, B.l1), 'j');
+    if (edge(pre + 'atk', pressed(gg, B.square) || pressed(gg, B.r2))) sIn('a', 1);
+    if (edge(pre + 'dash', pressed(gg, B.circle) || pressed(gg, B.r1))) sIn('dash', 1);
+    if (edge(pre + 'use', pressed(gg, B.tri) || d)) sIn('use', 1);
+  }
   function poll(ts) {
     requestAnimationFrame(poll);
     const gps = navigator.getGamepads ? navigator.getGamepads() : []; let g = null;
-    for (const p of gps) if (p && p.connected && (p.mapping === 'standard' || p.buttons.length >= 16)) { g = p; break; }
+    const list = []; for (const p of gps) if (p && p.connected && (p.mapping === 'standard' || p.buttons.length >= 16)) list.push(p);
+    g = list[0] || null; const g2 = list[1] || null;
     if (!g) { if (pad) { pad = null; document.documentElement.classList.remove('gp'); } return; }
     if (!pad || pad.index !== g.index) { pad = g; if (window.toast) toast('🎮 Controller verbunden'); }
     const now = ts / 1000, ax = g.axes[0] || 0, ay = g.axes[1] || 0;
     // Moduswechsel (Menue, Level, Karte): gehaltene Tasten nicht in den neuen Bildschirm uebernehmen, sonst startet z.B. ein Druck auf "Karte" sofort das naechste Level
     const ms = mode + (typeof paused !== 'undefined' && paused ? 'p' : ''); if (ms !== curMode) { curMode = ms; lock = true; hudMode = false; }
-    if (lock) { if (g.buttons.some(b => b.pressed)) { for (const [k, c] of [['l', 'l'], ['r', 'r'], ['j', 'j']]) if (held[k]) { held[k] = false; setIn(c, 0); } return; } lock = false; }
+    if (lock) { if (g.buttons.some(b => b.pressed)) { for (const [k, c] of [['l', 'l'], ['r', 'r'], ['j', 'j']]) { if (held[k]) { held[k] = false; setIn(c, 0); } if (held2[k]) { held2[k] = false; setIn2(c, 0); } } return; } lock = false; }
     const L = pressed(g, B.left) || ax < -DZ, R = pressed(g, B.right) || ax > DZ, U = pressed(g, B.up) || ay < -DZ, D = pressed(g, B.down) || ay > DZ + .2;
     const any = g.buttons.some(b => b.pressed) || Math.abs(ax) > DZ || Math.abs(ay) > DZ; if (any && !active) { active = true; document.documentElement.classList.add('gp'); }
-    if (edge('opt', pressed(g, B.options))) {
+    if (edge('opt', pressed(g, B.options) || (g2 && pressed(g2, B.options)))) {
       if (mode === 'play') { if (paused) resumeGame(); else pauseGame(); }
       else if (mode === 'map') showTitle();
       else if (mode === 'ui') {
@@ -56,13 +66,10 @@ const GP = (() => {
     }
     if (mode === 'play' && !paused) {
       // Gehen/Springen/Schlagen: nur bei Aenderung an das Eingabesystem melden, damit Tastatur und Touch daneben weiter funktionieren
-      const set = (k, v, c) => { if (held[k] !== v) { held[k] = v; setIn(c, v ? 1 : 0); } };
-      set('l', L, 'l'); set('r', R, 'r'); set('j', pressed(g, B.cross) || pressed(g, B.l1), 'j');
-      if (edge('atk', pressed(g, B.square) || pressed(g, B.r2))) setIn('a', 1);
-      if (edge('dash', pressed(g, B.circle) || pressed(g, B.r1))) setIn('dash', 1);
-      if (edge('use', pressed(g, B.tri) || D)) setIn('use', 1);
+      drive(g, held, 'a', setIn); if (g2 && save.chars.coop) drive(g2, held2, 'b', setIn2);
     } else {
       if (held.l) { held.l = false; setIn('l', 0); } if (held.r) { held.r = false; setIn('r', 0); } if (held.j) { held.j = false; setIn('j', 0); }
+      if (held2.l) { held2.l = false; setIn2('l', 0); } if (held2.r) { held2.r = false; setIn2('r', 0); } if (held2.j) { held2.j = false; setIn2('j', 0); }
       if (mode === 'map' && MV) {
         if (hudMode) {
           setHint('◀ ▶ wählen · ✕ öffnen · ○ zurück zur Karte');
