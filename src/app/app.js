@@ -51,7 +51,7 @@ function showTitle() {
   <p>Der Mondverschlinger hat <b>Chey</b> entführt und den Mond verschluckt.<br>Hilf <b>Luna</b>, Chey zu retten!</p>
   <div class="row c"><button class=g onclick="start()">▶ ${save.seen.intro ? 'Weiter' : 'Neues Abenteuer'}</button><button class=r onclick="resetGame()">Neu starten</button></div>
   <div class="row c"><button class=g onclick="daily()">📅 Tageslevel${save.daily.streak ? ' 🔥' + save.daily.streak : ''}</button><button class=d onclick="chars('title')">🐱 Charaktere</button><button class=d onclick="editor('title')">🛠️ Editor</button><button class=d onclick="album()">📖 Album</button><button class=d onclick="account()">👤 ${ACC.user ? esc(ACC.user.name) : 'Konto'}</button><button class=g onclick="online()">🌐 Online-Koop</button><button class=d onclick="settings()">⚙️ Einstellungen &amp; Cloud</button><button class=d data-fs onclick="FS.toggle()">⛶</button>${save.cleared['5:boss'] ? `<button class=g onclick="startNG()">🔁 Neues Spiel+ (${(save.ng || 0) + 1})</button>` : ''}</div>
-  <small>Handy quer halten · Android/iPhone: im Browser "Zum Startbildschirm"</small><br><small>Version 21</small></div>`;
+  <small>Handy quer halten · Android/iPhone: im Browser "Zum Startbildschirm"</small><br><small>Version 22</small></div>`;
 }
 function start() { if (!save.seen.intro) cine('intro', {}, () => story(STORY.intro, () => { save.seen.intro = 1; persist(); map(); })); else map(); }
 function resetGame() { if (confirm('Gesamten Fortschritt löschen?')) { save = defSave(); persist(); lastAt = null; showTitle(); } }
@@ -164,6 +164,7 @@ function play(wi, li, k, race, resume, daily) {
   const netHost = !!(NET.live && NET.mode === 'host' && !race && !daily);
   const chars = netHost ? [save.chars.p1, netGuestChar(save.chars.p1)] : race || !save.chars.coop ? [save.chars.p1] : [save.chars.p1, save.chars.p2];
   persist(); show('play'); $('#bd').style.display = charStats(S, save.chars.p1).dash ? 'flex' : 'none'; paused = false; curLv = { wi, li, k, race, daily };
+  tc.classList.toggle('co', chars.length > 1 && !netHost);
   AUDIO.play('level', { wi, li, kind: levelSpec(wi, li).kind });
   run = new Run(wi, li, S, r => { if (netHost) { NET.hostRun = false; netSend({ t: 'end', r: { ...r, rec: [] } }); } daily ? endDaily(daily, r) : endLevel(wi, li, k, r); }, { race, resume, seed: daily ? daily.seed : 0, chars, net: netHost ? 'host' : undefined });
   if (netHost) netStartHost(run, wi, li, k);
@@ -238,7 +239,7 @@ function endDaily(D, r) {
 // ---------- Eigene Level (Editor, geteilte Links) ----------
 let CUST = null;
 function playCustom(d, from) {
-  CUST = d; const S = stats(); persist(); show('play'); $('#bd').style.display = charStats(S, save.chars.p1).dash ? 'flex' : 'none'; paused = false; curLv = { wi: d.w, li: 3, k: -1, custom: d, from };
+  CUST = d; const S = stats(); persist(); show('play'); tc.classList.toggle('co', !!save.chars.coop); $('#bd').style.display = charStats(S, save.chars.p1).dash ? 'flex' : 'none'; paused = false; curLv = { wi: d.w, li: 3, k: -1, custom: d, from };
   AUDIO.play('level', { wi: d.w, li: 3, kind: d.kind });
   run = new Run(d.w, 3, S, r => endCustom(d, r, from), { custom: d, chars: save.chars.coop ? [save.chars.p1, save.chars.p2] : [save.chars.p1] });
   last = performance.now(); startLoop();
@@ -379,6 +380,11 @@ for (const [id, c] of [['#bl', 'l'], ['#br', 'r'], ['#bj', 'j'], ['#ba', 'a'], [
   const el = $(id);
   el.addEventListener('pointerdown', e => { e.preventDefault(); el.classList.add('on'); setIn(c, 1); });
   for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) el.addEventListener(ev, () => { el.classList.remove('on'); setIn(c, 0); });
+}
+for (const [id, c] of [['#b2l', 'l'], ['#b2r', 'r'], ['#b2j', 'j'], ['#b2a', 'a']]) {
+  const el = $(id);
+  el.addEventListener('pointerdown', e => { e.preventDefault(); el.classList.add('on'); setIn2(c, 1); });
+  for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) el.addEventListener(ev, () => { el.classList.remove('on'); setIn2(c, 0); });
 }
 $('#q').addEventListener('click', pauseGame);
 addEventListener('keydown', e => { if (typing(e)) return; if (e.key === 'Escape' || e.key === 'p') { if (paused) resumeGame(); else pauseGame(); } });

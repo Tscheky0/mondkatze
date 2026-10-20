@@ -108,7 +108,7 @@ function netGuestInput() {
 function netStartGuest(m) {
   if (!Array.isArray(m.chars) || m.wi < 0 || m.wi >= W.length || m.li < 0 || m.li >= W[m.wi].n || !m.S) return;
   run = null; paused = false; AUDIO.stop(); curLv = { wi: m.wi, li: m.li, k: m.k, net: 'guest' };
-  show('play'); $('#bd').style.display = charStats(m.S, m.chars[1]).dash ? 'flex' : 'none';
+  show('play'); tc.classList.remove('co'); $('#bd').style.display = charStats(m.S, m.chars[1]).dash ? 'flex' : 'none';
   AUDIO.play('level', { wi: m.wi, li: m.li, kind: levelSpec(m.wi, m.li).kind });
   run = new Run(m.wi, m.li, m.S, () => { }, { net: 'guest', chars: m.chars }); last = performance.now(); startLoop();
 }
