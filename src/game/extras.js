@@ -67,7 +67,7 @@ const ACH = [
   { id: 'a18', n: 'Tagesläufer', d: 'Schaffe das Tageslevel 3 Tage in Folge', t: s => ((s.daily || {}).streak || 0) >= 3 },
   { id: 'a19', n: 'Zu zweit stärker', d: 'Schaffe ein Level im 2-Spieler-Modus', t: s => (s.stats.coop || 0) >= 1 },
   { id: 'a20', n: 'Schlüsselmeisterin', d: 'Öffne 5 Schlosstore', t: s => (s.stats.gates || 0) >= 5 },
-  { id: 'a21', n: 'Alle drei', d: 'Schaffe je ein Level mit Luna, Minsch und Chey', t: s => ['luna', 'minsch', 'chey'].every(c => (s.stats.chars || {})[c]) },
+  { id: 'a21', n: 'Alle drei', d: 'Schaffe je ein Level mit Luna, Minsch und Chey (Chey ab Neues Spiel+)', t: s => ['luna', 'minsch', 'chey'].every(c => (s.stats.chars || {})[c]) },
   { id: 'a22', n: 'Laternenträgerin', d: 'Aktiviere 25 Checkpoints', t: s => (s.stats.cps || 0) >= 25 },
 ];
 // Fortschritt (aktuell, Ziel) fuer zaehlbare Erfolge; r = Muenzen-Belohnung
@@ -125,8 +125,8 @@ function wear(t, id) { save.cos.eq[t] = id; persist(); wardrobe(); }
 // ---------- Neues Spiel+ ----------
 function startNG() {
   if (!confirm('Neues Spiel+ starten? Welten und Level beginnen von vorn, Gegner werden stärker. Fähigkeiten, Items, Münzen und Kleidung bleiben.')) return;
-  save.ng = (save.ng || 0) + 1; save.prog = [0, 0, 0, 0, 0, 0]; save.cleared = {}; save.moons = {}; save.bells = {}; save.w = 0; lastAt = null; persist(); checkAch();
-  toast('🔁 Neues Spiel+ ' + save.ng + ' gestartet!'); map();
+  save.ng = (save.ng || 0) + 1; save.prog = W.map(() => 0); save.cleared = {}; save.moons = {}; save.bells = {}; save.w = 0; lastAt = null; persist(); checkAch();
+  toast('🔁 Neues Spiel+ ' + save.ng + ' gestartet!' + (save.ng === 1 ? ' 🐾 Chey ist jetzt spielbar!' : '')); map();
 }
 
 // ---------- Geister-Aufzeichnung ----------

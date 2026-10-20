@@ -4,6 +4,8 @@ const defSave = () => ({ w: 0, prog: [0, 0, 0, 0, 0, 0, 0], shards: 0, coins: 0,
 const SAVE_KEY = window.ADMIN ? 'mondkatze_admin' : 'mondkatze';
 let save; try { save = Object.assign(defSave(), JSON.parse(localStorage.getItem(SAVE_KEY))); } catch (e) { save = defSave(); }
 while (save.prog.length < W.length) save.prog.push(0);
+const cheyOpen = () => (save.ng || 0) >= 1; // Chey wird erst mit Neues Spiel+ spielbar
+if (!cheyOpen()) { if (save.chars.p1 === 'chey') save.chars.p1 = save.chars.p2 === 'luna' ? 'minsch' : 'luna'; if (save.chars.p2 === 'chey') save.chars.p2 = save.chars.p1 === 'minsch' ? 'luna' : 'minsch'; }
 const persistRaw = () => { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) { } };
 const persist = () => { save.ts = Date.now(); persistRaw(); CLOUD.touch(); };
 
@@ -49,7 +51,7 @@ function showTitle() {
   <p>Der Mondverschlinger hat <b>Chey</b> entführt und den Mond verschluckt.<br>Hilf <b>Luna</b>, Chey zu retten!</p>
   <div class="row c"><button class=g onclick="start()">▶ ${save.seen.intro ? 'Weiter' : 'Neues Abenteuer'}</button><button class=r onclick="resetGame()">Neu starten</button></div>
   <div class="row c"><button class=g onclick="daily()">📅 Tageslevel${save.daily.streak ? ' 🔥' + save.daily.streak : ''}</button><button class=d onclick="chars('title')">🐱 Charaktere</button><button class=d onclick="editor('title')">🛠️ Editor</button><button class=d onclick="album()">📖 Album</button><button class=d onclick="settings()">⚙️ Einstellungen &amp; Cloud</button><button class=d data-fs onclick="FS.toggle()">⛶</button>${save.cleared['5:boss'] ? `<button class=g onclick="startNG()">🔁 Neues Spiel+ (${(save.ng || 0) + 1})</button>` : ''}</div>
-  <small>Handy quer halten · Android/iPhone: im Browser "Zum Startbildschirm"</small><br><small>Version 16</small></div>`;
+  <small>Handy quer halten · Android/iPhone: im Browser "Zum Startbildschirm"</small><br><small>Version 17</small></div>`;
 }
 function start() { if (!save.seen.intro) cine('intro', {}, () => story(STORY.intro, () => { save.seen.intro = 1; persist(); map(); })); else map(); }
 function resetGame() { if (confirm('Gesamten Fortschritt löschen?')) { save = defSave(); persist(); lastAt = null; showTitle(); } }
@@ -275,14 +277,14 @@ function nextTip() {
 let charsBack = 'title';
 function chars(back) {
   if (back) charsBack = back; show('ui'); const C = save.chars;
-  const card = (id, slot) => `<div class="it ${C[slot] === id ? 'sel' : ''}" style="width:150px" tabindex=0 onclick="pickChar('${slot}','${id}')"><div class=e>${catImg(id, 76)}</div><b>${CHAR[id].n}</b><br><small>${CHAR[id].d}</small></div>`;
+  const card = (id, slot) => id === 'chey' && !cheyOpen() ? `<div class=it style="width:150px;opacity:.55"><div class=e>🔒</div><b>Chey</b><br><small>Wird mit Neues Spiel+ freigeschaltet</small></div>` : `<div class="it ${C[slot] === id ? 'sel' : ''}" style="width:150px" tabindex=0 onclick="pickChar('${slot}','${id}')"><div class=e>${catImg(id, 76)}</div><b>${CHAR[id].n}</b><br><small>${CHAR[id].d}</small></div>`;
   ui.innerHTML = `<div class=hd><h2>🐱 Charaktere</h2><button class=d onclick="${charsBack === 'map' ? 'map()' : 'showTitle()'}">Zurück</button></div>
   <div class=card><h3>Spielmodus</h3><div class=row><button class="${C.coop ? 'd' : 'g'}" onclick="setCoop(false)">1 Spieler</button><button class="${C.coop ? 'g' : 'd'}" onclick="setCoop(true)">👥 2 Spieler (lokal)</button></div>
-  ${C.coop ? '<small>Spieler 1: A/D laufen · W oder Leertaste springen · F schlagen · G Dash · S Tür.<br>Spieler 2: Pfeiltasten · ↑ springen · Enter schlagen · rechte Shift Dash · ↓ Tür.<br>Oder zwei Controller. Fällt eine Katze um, steht sie nach 6 Sekunden wieder auf. Das Level ist geschafft, wenn alle lebenden Katzen im Ziel sind.</small>' : '<small>Im 2-Spieler-Modus spielen Luna und Minsch gemeinsam an einem Gerät. Chey ist ein optionaler dritter Charakter.</small>'}</div>
+  ${C.coop ? '<small>Spieler 1: A/D laufen · W oder Leertaste springen · F schlagen · G Dash · S Tür.<br>Spieler 2: Pfeiltasten · ↑ springen · Enter schlagen · rechte Shift Dash · ↓ Tür.<br>Oder zwei Controller. Fällt eine Katze um, steht sie nach 6 Sekunden wieder auf. Das Level ist geschafft, wenn alle lebenden Katzen im Ziel sind.</small>' : '<small>Im 2-Spieler-Modus spielen Luna und Minsch gemeinsam an einem Gerät. Chey ist ein optionaler dritter Charakter und wird mit Neues Spiel+ freigeschaltet.</small>'}</div>
   <div class=card><h3>${C.coop ? 'Spieler 1' : 'Dein Charakter'}</h3>${['luna', 'minsch', 'chey'].map(id => card(id, 'p1')).join('')}</div>
   ${C.coop ? `<div class=card><h3>Spieler 2</h3>${['luna', 'minsch', 'chey'].map(id => card(id, 'p2')).join('')}</div>` : ''}`;
 }
-function pickChar(slot, id) { const C = save.chars, other = slot === 'p1' ? 'p2' : 'p1'; if (C[other] === id) C[other] = C[slot]; C[slot] = id; persist(); chars(); }
+function pickChar(slot, id) { if (id === 'chey' && !cheyOpen()) return toast('🔒 Chey gibt es erst ab Neues Spiel+'); const C = save.chars, other = slot === 'p1' ? 'p2' : 'p1'; if (C[other] === id) C[other] = C[slot]; C[slot] = id; persist(); chars(); }
 function setCoop(v) { save.chars.coop = v; persist(); chars(); }
 
 // ---------- Einstellungen, Spielstand-Code, Cloud ----------
