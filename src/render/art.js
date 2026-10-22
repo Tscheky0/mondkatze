@@ -1,19 +1,24 @@
-// Selbstgezeichnete Katzen: Luna = weiss mit orangen Flecken, Minsch = ganz weiss, Chey = schwarz. Kein Emoji, skalierbar.
+// Selbstgezeichnete Katzen: Luna = weiss mit orangen Flecken, Minsch = ganz weiss, Chey = schwarz mit Schleife, Kuro = schwarz mit Halstuch, Mama-Kitty = weiss mit Perlen. Kein Emoji, skalierbar.
 const PAL = {
   luna: { k: 'luna', body: '#ffffff', edge: '#b9c6e6', inner: '#ffb3c6', eye: '#3b9cff', acc: '#ffd54a', patch: '#f39a3a' },
   minsch: { k: 'minsch', body: '#ffffff', edge: '#aebde0', inner: '#ffc0d0', eye: '#38c9a4', acc: '#6cb8ff' },
   chey: { k: 'chey', body: '#2b2b38', edge: '#0e0e16', inner: '#c46a8a', eye: '#ffd23a', acc: '#ff5d8f', whisk: '#9aa0b8' },
-  kuro: { k: 'kuro', body: '#4a4a5a', edge: '#1e1e28', inner: '#d08a9a', eye: '#7cff9a', acc: '#e8453c', whisk: '#b0b6c8', stripe: '#2a2a36' },
+  kuro: { k: 'kuro', body: '#1c1c24', edge: '#050508', inner: '#b85a6e', eye: '#7cff9a', acc: '#e8453c', whisk: '#c0c6d6' },
   mama: { k: 'mama', body: '#fffdf8', edge: '#c8c0d8', inner: '#ffc0d0', eye: '#8a6cff', acc: '#ff8fb8', pearl: '#f6f2ff' },
 };
 // Spielbare Charaktere (Werte in level.js: charStats)
 const CHAR = {
-  luna: { n: 'Luna', d: 'Ausgewogen – weiß mit orangen Flecken' },
-  minsch: { n: 'Minsch', d: 'Schneller und springt von Wänden ab' },
-  chey: { n: 'Chey', d: 'Dash von Anfang an, sieht im Dunkeln weiter' },
-  kuro: { n: 'Kuro', d: 'Grau getigert – Doppelsprung von Anfang an' },
-  mama: { n: 'Mama-Kitty', d: 'Weiß mit Perlen – +1 Herz und heilt langsam' },
+  luna: { n: 'Luna', look: 'Weiß mit orangen Flecken', v: 'Mondsog: zieht Splitter und Münzen an' },
+  minsch: { n: 'Minsch', look: 'Ganz weiß, blaues Halstuch', v: 'Schneller und springt von Wänden ab' },
+  kuro: { n: 'Kuro', look: 'Schwarz, rotes Halstuch', v: 'Doppelsprung von Anfang an, springt höher' },
+  mama: { n: 'Mama-Kitty', look: 'Weiß mit Perlen', v: '+1 Herz und heilt langsam' },
+  chey: { n: 'Chey', look: 'Schwarz, rosa Schleife', v: 'Dash von Anfang an, sieht im Dunkeln weiter' },
 };
+// Besetzung: Die gewaehlte Katze spielt in Filmen und Dialogen die Heldin; ist sie Chey, wird stattdessen Luna entfuehrt.
+const HERO = () => (typeof save !== 'undefined' && save.chars && CHAR[save.chars.p1] ? save.chars.p1 : 'luna');
+const FRIEND = () => HERO() === 'chey' ? 'luna' : 'chey';
+const castWho = w => w === 'luna' ? HERO() : w === 'chey' ? FRIEND() : w;
+const castText = t => HERO() === 'luna' ? t : String(t).replace(/Luna|Chey/g, m => CHAR[m === 'Luna' ? HERO() : FRIEND()].n);
 const selPal = () => PAL[(typeof save !== 'undefined' && save.chars && save.chars.p1) || 'luna'];
 
 function drawCat(c, x, y, s, face, t, o, pal) {
@@ -66,10 +71,10 @@ function drawCat(c, x, y, s, face, t, o, pal) {
 
 const _imgCache = {};
 function catImg(who, size) {
-  const key = who + size + (who === 'luna' && typeof lookSig === 'function' ? lookSig() : '');
+  const hero = who === HERO(), key = who + size + (hero && typeof lookSig === 'function' ? lookSig() : '');
   if (!_imgCache[key]) {
     const cn = document.createElement('canvas'); cn.width = cn.height = size * 2;
-    const c = cn.getContext('2d'); drawCat(c, size * 1.0, size * 1.05, size * 1.6, 1, 0, {}, PAL[who]);
+    const c = cn.getContext('2d'); drawCat(c, size * 1.0, size * 1.05, size * 1.6, 1, 0, { cos: hero }, PAL[who]);
     _imgCache[key] = cn.toDataURL();
   }
   return `<img src="${_imgCache[key]}" width="${size}" height="${size}" style="vertical-align:middle">`;

@@ -23,7 +23,7 @@ function lakeScene(c, t, o) {
 }
 
 function groundStrip(c, sp) { c.fillStyle = sp.pal.dirt; c.fillRect(0, 462, 960, 82); c.fillStyle = sp.pal.top; c.fillRect(0, 462, 960, 10); }
-const cat = (c, who, x, y, s, face, t, run) => drawCat(c, x, y, s, face, t * 10, { run }, PAL[who]);
+const cat = (c, who, x, y, s, face, t, run) => drawCat(c, x, y, s, face, t * 10, { run, cos: castWho(who) === HERO() }, PAL[castWho(who)]);
 
 const CINE = {
   intro: { dur: 18, sfx: [[.2, 'wind'], [5.2, 'roar'], [7.6, 'moonEat'], [8.4, 'thunder'], [11.1, 'roar'], [15.4, 'sparkle']], subs: [[.3, 4.5, 'Am Mondsee lebten Luna und Chey – beste Freunde.'], [4.8, 7.3, 'Doch in dieser Nacht verdunkelte sich der Himmel…'], [7.6, 10.4, 'Der Mondverschlinger schluckte den Mond!'], [10.8, 14.8, 'Und er entführte Chey in seinen Vulkan.'], [15.2, 17.6, 'Luna schwört: Ich hole dich zurück!']],
@@ -129,7 +129,7 @@ function cine(key, o, done) {
     while (ei < evs.length && t >= evs[ei][0]) AUDIO.sfx(evs[ei++][1]);
     const b = Math.min(1, t * 2) * 46; c.fillStyle = '#000'; c.fillRect(0, 0, 960, b); c.fillRect(0, 544 - b, 960, b);
     const s = subs.find(s => t >= s[0] && t <= s[1]);
-    if (s) { c.globalAlpha = Math.min(1, (t - s[0]) * 4, (s[1] - t) * 4); c.font = 'bold 24px "Trebuchet MS",sans-serif'; c.lineJoin = 'round'; c.strokeStyle = 'rgba(0,0,0,.85)'; c.lineWidth = 6; c.fillStyle = '#fff'; c.strokeText(s[2], 480, 544 - 23); c.fillText(s[2], 480, 544 - 23); c.globalAlpha = 1; }
+    if (s) { c.globalAlpha = Math.min(1, (t - s[0]) * 4, (s[1] - t) * 4); c.font = 'bold 24px "Trebuchet MS",sans-serif'; c.lineJoin = 'round'; c.strokeStyle = 'rgba(0,0,0,.85)'; c.lineWidth = 6; c.fillStyle = '#fff'; c.strokeText(castText(s[2]), 480, 544 - 23); c.fillText(castText(s[2]), 480, 544 - 23); c.globalAlpha = 1; }
     c.font = '15px sans-serif'; c.fillStyle = 'rgba(255,255,255,.55)'; c.textAlign = 'right'; c.fillText('Tippen = überspringen', 950, 23); c.textAlign = 'center';
     if (t >= S.dur) return stop();
     requestAnimationFrame(loop);

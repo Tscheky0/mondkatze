@@ -112,7 +112,7 @@ function album(tab) {
 // ---------- Garderobe ----------
 function wardrobe() {
   show('ui'); const eq = save.cos.eq;
-  let h = `<div class=hd><h2>👒 Garderobe</h2><button class=d onclick="bag()">Zurück</button></div><div style="text-align:center">${catImg('luna', 150)}</div><p style="text-align:center"><small>Neue Kleidung gibt es in den Läden der Welten.</small></p>`;
+  let h = `<div class=hd><h2>👒 Garderobe</h2><button class=d onclick="bag()">Zurück</button></div><div style="text-align:center">${catImg(HERO(), 150)}</div><p style="text-align:center"><small>Neue Kleidung gibt es in den Läden der Welten.</small></p>`;
   for (const t of ['hat', 'scarf', 'color']) {
     h += `<h3>${COS_T[t]}</h3><div><div class="it ${!eq[t] ? 'sel' : ''}" onclick="wear('${t}',null)"><div class=e>🚫</div>Ohne</div>`;
     for (const x of COS.filter(x => x.t === t)) h += save.cos.own[x.id] ? `<div class="it ${eq[t] === x.id ? 'sel' : ''}" onclick="wear('${t}','${x.id}')"><div class=e>${x.e}</div><b>${x.n}</b></div>` : `<div class=it style="opacity:.4"><div class=e>❔</div>${W[x.w].emoji} ${W[x.w].name}</div>`;

@@ -49,21 +49,21 @@ function closePop() { $('#pop').style.display = 'none'; }
 // ---------- Titel & Story ----------
 function showTitle() {
   show('ui'); AUDIO.play('menu', { wi: 0 });
-  ui.innerHTML = `<div class=title><div>${catImg('luna', 130)}${catImg('chey', 100)}</div><h1>Mondkatze</h1>
-  <p>Der Mondverschlinger hat <b>Chey</b> entführt und den Mond verschluckt.<br>Hilf <b>Luna</b>, Chey zu retten!</p>
+  ui.innerHTML = `<div class=title><div>${catImg(HERO(), 130)}${catImg(FRIEND(), 100)}</div><h1>Mondkatze</h1>
+  <p>Der Mondverschlinger hat <b>${CHAR[FRIEND()].n}</b> entführt und den Mond verschluckt.<br>Hilf <b>${CHAR[HERO()].n}</b>, ${CHAR[FRIEND()].n} zu retten!</p>
   <div class="row c"><button class=g onclick="start()">▶ ${save.seen.intro ? 'Weiter' : 'Neues Abenteuer'}</button><button class=r onclick="resetGame()">Neu starten</button></div>
   <div class="row c"><button class=g onclick="daily()">📅 Tageslevel${save.daily.streak ? ' 🔥' + save.daily.streak : ''}</button><button class=d onclick="chars('title')">🐱 Charaktere</button><button class=d onclick="editor('title')">🛠️ Editor</button><button class=d onclick="album()">📖 Album</button><button class=d onclick="account()">👤 ${ACC.user ? esc(ACC.user.name) : 'Konto'}</button><button class=g onclick="online()">🌐 Online-Koop</button><button class=d onclick="settings()">⚙️ Einstellungen &amp; Cloud</button><button class=d data-fs onclick="FS.toggle()">⛶</button>${save.cleared['5:boss'] ? `<button class=g onclick="startNG()">🔁 Neues Spiel+ (${(save.ng || 0) + 1})</button>` : ''}</div>
-  <small>Handy quer halten · Android/iPhone: im Browser "Zum Startbildschirm"</small><br><small>Version 24</small></div>`;
+  <small>Handy quer halten · Android/iPhone: im Browser "Zum Startbildschirm"</small><br><small>Version 26</small></div>`;
 }
-function start() { if (!save.seen.intro) cine('intro', {}, () => story(STORY.intro, () => { save.seen.intro = 1; persist(); map(); })); else map(); }
+function start() { if (!save.seen.intro && !save.seen.pick) return chars('start'); if (!save.seen.intro) cine('intro', {}, () => story(STORY.intro, () => { save.seen.intro = 1; persist(); map(); })); else map(); }
 function resetGame() { if (confirm('Gesamten Fortschritt löschen?')) { save = defSave(); persist(); lastAt = null; showTitle(); } }
 function story(pages, done) {
   let i = 0;
   const step = () => {
     if (i >= pages.length) return done();
     const p = pages[i++]; show('ui');
-    const who = p.w === 'luna' ? catImg('luna', 120) : p.w === 'chey' ? catImg('chey', 120) : p.w === 'boss' ? p.e : '📖';
-    ui.innerHTML = `<div class=story><div class=who>${who}</div><b>${{ luna: 'Luna', chey: 'Chey', boss: '', narr: '' }[p.w]}</b><div class=txt>${p.t}</div>
+    const cw = castWho(p.w), who = p.w === 'luna' || p.w === 'chey' ? catImg(cw, 120) : p.w === 'boss' ? p.e : '📖';
+    ui.innerHTML = `<div class=story><div class=who>${who}</div><b>${p.w === 'luna' || p.w === 'chey' ? CHAR[cw].n : ''}</b><div class=txt>${castText(p.t)}</div>
     <button class=g id=nx>Weiter ▶</button> <button class=d id=sk>Überspringen</button></div>`;
     $('#nx').onclick = step; $('#sk').onclick = () => { i = pages.length; step(); };
   };
@@ -215,7 +215,7 @@ function endLevel(wi, li, k, r) {
   save.stats.secrets += r.secrets || 0; save.stats.levels++; save.stats.gates = (save.stats.gates || 0) + (r.gates || 0); save.stats.cps = (save.stats.cps || 0) + (r.cpHit || 0); if (r.coop) save.stats.coop = (save.stats.coop || 0) + 1; save.stats.chars = save.stats.chars || {}; for (const ch of r.chars || []) save.stats.chars[ch] = 1;
   save.shards += gain; save.coins += Math.round((cg + tb) * (1 + .5 * (save.ng || 0))); save.cleared[key] = 1; save.prog[wi] = Math.max(save.prog[wi], k + 1); persist(); checkAch();
   if (Math.floor(save.shards / SP_PT) > lv0) lines.push('⭐ Neuer Skillpunkt im Mondbaum!');
-  ui.innerHTML = `<div class=card style="text-align:center;margin-top:8vh"><div>${catImg('luna', 90)}</div><h2>✅ ${W[wi].name} ${li + 1} geschafft!</h2><div class=rank style="color:${RCOL[rk]}">${rk}</div><p>🪙 +${cg} · 🌙 +${gain}${first ? '' : ' (Wiederholung)'} · ⏱ ${r.time}s übrig</p>${lines.map(l => `<p>${l}</p>`).join('')}<div class="row c"><button class=g onclick="map({from:${k},advance:true})">Weiter ▶</button><button onclick="play(${wi},${li},${k})">🔄 Nochmal</button><button class=d onclick="map({from:${k}})">🗺️ Karte</button></div></div>`;
+  ui.innerHTML = `<div class=card style="text-align:center;margin-top:8vh"><div>${catImg(HERO(), 90)}</div><h2>✅ ${W[wi].name} ${li + 1} geschafft!</h2><div class=rank style="color:${RCOL[rk]}">${rk}</div><p>🪙 +${cg} · 🌙 +${gain}${first ? '' : ' (Wiederholung)'} · ⏱ ${r.time}s übrig</p>${lines.map(l => `<p>${l}</p>`).join('')}<div class="row c"><button class=g onclick="map({from:${k},advance:true})">Weiter ▶</button><button onclick="play(${wi},${li},${k})">🔄 Nochmal</button><button class=d onclick="map({from:${k}})">🗺️ Karte</button></div></div>`;
   if (gst) netGuestWait();
 }
 
@@ -292,8 +292,9 @@ function nextTip() {
 let charsBack = 'title';
 function chars(back) {
   if (back) charsBack = back; show('ui'); const C = save.chars;
-  const card = id => id === 'chey' && !cheyOpen() ? `<div class=it style="width:150px;opacity:.55"><div class=e>🔒</div><b>Chey</b><br><small>Wird mit Neues Spiel+ freigeschaltet</small></div>` : `<div class="it ${C.p1 === id ? 'sel' : ''}" style="width:150px" tabindex=0 onclick="pickChar('${id}')"><div class=e>${catImg(id, 76)}</div><b>${CHAR[id].n}</b><br><small>${CHAR[id].d}</small></div>`;
-  ui.innerHTML = `<div class=hd><h2>🐱 Charaktere</h2><button class=d onclick="${charsBack === 'map' ? 'map()' : 'showTitle()'}">Zurück</button></div>
+  const card = id => id === 'chey' && !cheyOpen() ? `<div class=it style="width:150px;opacity:.55"><div class=e>🔒</div><b>Chey</b><br><small>Wird mit Neues Spiel+ freigeschaltet</small></div>` : `<div class="it ${C.p1 === id ? 'sel' : ''}" style="width:150px" tabindex=0 onclick="pickChar('${id}')"><div class=e>${catImg(id, 76)}</div><b>${CHAR[id].n}</b><br><small>${CHAR[id].look}</small><br><small style="color:#ffe08a">⭐ ${CHAR[id].v}</small></div>`;
+  ui.innerHTML = `<div class=hd><h2>🐱 ${charsBack === 'start' ? 'Wähle deine Katze' : 'Charaktere'}</h2><button class=d onclick="${charsBack === 'map' ? 'map()' : 'showTitle()'}">Zurück</button></div>
+  ${charsBack === 'start' ? `<div class=card style="text-align:center"><p>Deine Katze ist die Heldin der Geschichte und hat einen eigenen Vorteil. Du kannst sie später jederzeit wechseln.</p><button class=g onclick="save.seen.pick = 1; persist(); start()">▶ Mit ${CHAR[C.p1].n} losziehen</button></div>` : ''}
   <div class=card><h3>Dein Charakter</h3>${['luna', 'minsch', 'kuro', 'mama', 'chey'].map(card).join('')}</div>
   <div class=card><small>Zu zweit spielst du online mit Freunden: im Titel „🌐 Online-Koop“ wählen. Jeder spielt mit seinem eigenen Charakter. Chey wird mit Neues Spiel+ freigeschaltet.</small></div>`;
 }

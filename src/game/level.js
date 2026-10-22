@@ -7,6 +7,7 @@ const NETIN = { l: 0, r: 0, j: 0, jb: 0, ap: 0, dash: 0, use: 0 }; // Eingabe de
 // Charakterwerte: Luna ausgewogen, Minsch schneller + Wandsprung, Chey Dash ab Start + sieht im Dunkeln weiter
 function charStats(S, id) {
   const s = Object.assign({}, S);
+  if (id === 'luna') { s.magnet = Math.max(s.magnet, 70); }
   if (id === 'minsch') { s.spd += .1; s.wall = Math.max(s.wall, 1); }
   if (id === 'chey') { s.dash = Math.max(s.dash, 1); }
   if (id === 'kuro') { s.xj = Math.max(s.xj, 1); s.jmp += .04; }
