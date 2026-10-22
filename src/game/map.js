@@ -196,6 +196,14 @@ function mdraw() {
   for (let i = 0; i < 3; i++) { const x = (t * 10 + i * 380) % 1200 - 120, y = 90 + i * 150; c.fillStyle = 'rgba(0,0,0,.06)'; c.beginPath(); c.ellipse(x + 26, y + 38, 62, 17, 0, 0, 7); c.ellipse(x + 52, y + 28, 36, 14, 0, 0, 7); c.fill(); c.fillStyle = 'rgba(255,255,255,.5)'; c.beginPath(); c.ellipse(x, y, 60, 18, 0, 0, 7); c.ellipse(x + 30, y - 10, 36, 16, 0, 0, 7); c.fill(); }
   c.strokeStyle = 'rgba(30,30,50,.7)'; c.lineWidth = 2;
   for (let i = 0; i < 3; i++) { const bx = (t * 42 + i * 420) % 1200 - 120, by = 70 + i * 100 + Math.sin(t * 3 + i) * 8, w = Math.sin(t * 10 + i) * 4; c.beginPath(); c.moveTo(bx - 9, by); c.quadraticCurveTo(bx - 4, by - 6 + w, bx, by); c.quadraticCurveTo(bx + 4, by - 6 + w, bx + 9, by); c.stroke(); }
+  // Abkuerzungen durch geheime Ausgaenge: violetter, leuchtender Bogen
+  L.N.forEach((nd, k) => {
+    const to = nd.t === 'lv' && save.sec ? save.sec[wi + ':' + nd.i] : null; if (to == null || !L.P[to]) return;
+    const a = L.P[k], b = L.P[to], mx2 = (a.x + b.x) / 2, my2 = Math.min(a.y, b.y) - 70;
+    c.save(); c.lineCap = 'round'; c.strokeStyle = 'rgba(90,40,140,.35)'; c.lineWidth = 9; c.beginPath(); c.moveTo(a.x, a.y); c.quadraticCurveTo(mx2, my2, b.x, b.y); c.stroke();
+    c.strokeStyle = '#c79bff'; c.lineWidth = 4; c.setLineDash([10, 8]); c.lineDashOffset = -t * 30; c.beginPath(); c.moveTo(a.x, a.y); c.quadraticCurveTo(mx2, my2, b.x, b.y); c.stroke(); c.restore();
+    font(18); c.fillText('🌀', mx2, (a.y + b.y) / 4 + my2 / 2);
+  });
   const col = { ok: '#3fd16f', cur: '#ff5c7a', lock: '#8c8f9e' };
   L.N.forEach((nd, k) => {
     const p = L.P[k], st = k < pr ? 'ok' : k === pr ? 'cur' : 'lock', bob = Math.sin(t * 3 + k) * (st === 'cur' ? 2 : 0);

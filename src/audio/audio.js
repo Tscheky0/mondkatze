@@ -1,6 +1,6 @@
 // Prozeduraler Sound: Effekte und Musik per WebAudio, keine Audio-Dateien.
 // Einstellungen (Lautstaerke, Vibration, Touch-Layout, Energiesparen) liegen in PREFS.
-const PREFS = Object.assign({ music: .7, sfx: .8, vib: true, btn: 1, lefty: false, saver: false, retro: false },
+const PREFS = Object.assign({ music: .7, sfx: .8, vib: true, btn: 1, lefty: false, saver: false, retro: false, assist: false },
   (() => { try { return JSON.parse(localStorage.getItem('mk_prefs')) || {}; } catch (e) { return {}; } })());
 const vib = ms => { if (PREFS.vib && typeof GP !== 'undefined') GP.rumble(ms); if (PREFS.vib && navigator.vibrate) { try { navigator.vibrate(ms); } catch (e) { } } };
 

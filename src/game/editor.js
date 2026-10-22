@@ -106,5 +106,5 @@ function customLevel(d) {
   const spots = []; for (let c = 0; c < cols;) { if (top[c] < 0) { c++; continue; } let e = c; while (e < cols && top[e] === top[c]) e++; spots.push({ x0: c, x1: e, y: top[c] }); c = e; }
   const sp = Object.assign({}, levelSpec(d.w, 3), { name: 'Eigenes Level', kind: d.kind, sky: skyFor(d.w, d.kind), style: 'plain', mods: [], weather: 'none', wind: 0, act: 0, actName: 'Eigenes Level' });
   const fc = d.flag ? d.flag.c : cols - 5, fr = d.flag ? d.flag.r : (spots[spots.length - 1] || { y: 14 }).y - 1;
-  return { g, cols, spots, gaps: [], sp, springs: [], movers: [], fire: [], doors: [], cps: [], gate: null, keyPos: null, moonPos: null, flagX: fc * TS, flagY: (fr + 1) * TS };
+  return { g, cols, spots, gaps: [], sp, springs: [], movers: [], fire: [], doors: [], cps: [], gate: null, keyPos: null, moonPos: null, secret: null, flagX: fc * TS, flagY: (fr + 1) * TS };
 }

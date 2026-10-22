@@ -9,6 +9,21 @@ function afterBoss(wi, kind, k) {
   if (fin) cine('ending', {}, () => story(pages, done)); else cine('bossdown', { wi, kind }, () => story(pages, done));
 }
 
+// Belohnung fuer einen besiegten Boss oder Waechter (Rundenkampf und Huepf-Kampf)
+function bossLoot(wi, kind, k) {
+  const boss = kind === 'boss', NG = save.ng || 0, key = wi + ':' + kind, first = !save.cleared[key], lv0 = Math.floor(save.shards / SP_PT), lines = [], cb = Math.round((boss ? 150 : 60) * (1 + .5 * NG));
+  const cg = first ? cb : Math.round(cb * .25); save.coins += cg; lines.push(`🪙 +${cg} Münzen`);
+  if (first) {
+    save.shards += boss ? 40 : 20; save.cleared[key] = 1; lines.push(`🌙 +${boss ? 40 : 20} Splitter`);
+    const un = ITEMS.filter(i => i.w === wi && !save.own[i.id]);
+    if (un.length && boss) { const it = pick(un); save.own[it.id] = 1; lines.push(`🎁 Beute: ${it.e} ${it.n} (${it.d})`); }
+  }
+  save.prog[wi] = Math.max(save.prog[wi], k + 1); persist(); checkAch();
+  if (Math.floor(save.shards / SP_PT) > lv0) lines.push('⭐ Neuer Skillpunkt im Mondbaum!');
+  if (boss && wi < W.length - 1) lines.push(`🗺️ Neue Welt: ${W[wi + 1].emoji} ${W[wi + 1].name}`);
+  return lines;
+}
+
 function battle(wi, kind, k, noFilm) {
   if (!noFilm) return cine('bossintro', { wi, kind }, () => battle(wi, kind, k, 1));
   show('ui'); AUDIO.play('boss', { wi });
@@ -40,16 +55,7 @@ function battle(wi, kind, k, noFilm) {
   }
   function win() {
     st.over = true; AUDIO.stop(); AUDIO.sfx('win');
-    const key = wi + ':' + kind, first = !save.cleared[key], lv0 = Math.floor(save.shards / SP_PT), lines = [], cb = Math.round((boss ? 150 : 60) * (1 + .5 * NG));
-    const cg = first ? cb : Math.round(cb * .25); save.coins += cg; lines.push(`🪙 +${cg} Münzen`);
-    if (first) {
-      save.shards += boss ? 40 : 20; save.cleared[key] = 1; lines.push(`🌙 +${boss ? 40 : 20} Splitter`);
-      const un = ITEMS.filter(i => i.w === wi && !save.own[i.id]);
-      if (un.length && boss) { const it = pick(un); save.own[it.id] = 1; lines.push(`🎁 Beute: ${it.e} ${it.n} (${it.d})`); }
-    }
-    save.prog[wi] = Math.max(save.prog[wi], k + 1); persist(); checkAch();
-    if (Math.floor(save.shards / SP_PT) > lv0) lines.push('⭐ Neuer Skillpunkt im Mondbaum!');
-    if (boss && wi < W.length - 1) lines.push(`🗺️ Neue Welt: ${W[wi + 1].emoji} ${W[wi + 1].name}`);
+    const lines = bossLoot(wi, kind, k);
     ui.innerHTML = `<div class=bt style="background:${B.bg}"><div class=foe>💫</div><h2>${B.n} besiegt!</h2>${lines.map(l => `<p>${l}</p>`).join('')}<div class="row c"><button class=g onclick="afterBoss(${wi},'${kind}',${k})">Weiter ▶</button><button onclick="battle(${wi},'${kind}',${k},1)">🔄 Nochmal</button><button class=d onclick="map({from:${k}})">🗺️ Karte</button></div></div>`;
   }
   function enemyTurn(n) {

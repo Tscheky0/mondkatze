@@ -53,7 +53,7 @@ function showTitle() {
   <p>Der Mondverschlinger hat <b>${CHAR[FRIEND()].n}</b> entführt und den Mond verschluckt.<br>Hilf <b>${CHAR[HERO()].n}</b>, ${CHAR[FRIEND()].n} zu retten!</p>
   <div class="row c"><button class=g onclick="start()">▶ ${save.seen.intro ? 'Weiter' : 'Neues Abenteuer'}</button><button class=r onclick="resetGame()">Neu starten</button></div>
   <div class="row c"><button class=g onclick="daily()">📅 Tageslevel${save.daily.streak ? ' 🔥' + save.daily.streak : ''}</button><button class=d onclick="chars('title')">🐱 Charaktere</button><button class=d onclick="editor('title')">🛠️ Editor</button><button class=d onclick="album()">📖 Album</button><button class=d onclick="account()">👤 ${ACC.user ? esc(ACC.user.name) : 'Konto'}</button><button class=g onclick="online()">🌐 Online-Koop</button><button class=d onclick="settings()">⚙️ Einstellungen &amp; Cloud</button><button class=d data-fs onclick="FS.toggle()">⛶</button>${save.cleared['5:boss'] ? `<button class=g onclick="startNG()">🔁 Neues Spiel+ (${(save.ng || 0) + 1})</button>` : ''}</div>
-  <small>Handy quer halten · Android/iPhone: im Browser "Zum Startbildschirm"</small><br><small>Version 27</small></div>`;
+  <small>Handy quer halten · Android/iPhone: im Browser "Zum Startbildschirm"</small><br><small>Version 28</small></div>`;
 }
 function start() { if (!save.seen.intro && !save.seen.pick) return chars('start'); if (!save.seen.intro) cine('intro', {}, () => story(STORY.intro, () => { save.seen.intro = 1; persist(); map(); })); else map(); }
 function resetGame() { if (confirm('Gesamten Fortschritt löschen?')) { save = defSave(); persist(); lastAt = null; showTitle(); } }
@@ -93,15 +93,15 @@ function arrive(d) {
   lastAt = { wi, k: MV.at.k, shop: MV.at.shop };
   if (d.shop != null) { const sh = SHOPS[wi][d.shop]; popup(`<div><b>${sh.o} ${sh.n}</b><br><small>Items &amp; Boni kaufen</small></div><button class=g onclick="shop(${wi},${d.shop})">🛒 Eintreten</button>`); return; }
   const nd = MV.L.N[d.k]; let t, s;
-  if (nd.t === 'lv') { t = `${nd.i + 1}. ${levelSpec(wi, nd.i).name}`; s = MOONLV.includes(nd.i) && !save.moons[wi + ':' + nd.i] ? '🌕 Hier versteckt sich ein großer Mond' : 'Splitter, Münzen &amp; Items sammeln'; }
-  else { t = `${nd.t === 'boss' ? '👑 Boss' : '⚔️ Wächter'}: ${Wd[nd.t].n}`; s = 'Kampf mit Konter-System'; }
+  if (nd.t === 'lv') { t = `${nd.i + 1}. ${levelSpec(wi, nd.i).name}`; s = MOONLV.includes(nd.i) && !save.moons[wi + ':' + nd.i] ? '🌕 Hier versteckt sich ein großer Mond' : 'Splitter, Münzen &amp; Items sammeln'; if (SECRET_LI.includes(nd.i) && genLevel(wi, nd.i, 0).secret) s += (save.sec && save.sec[wi + ':' + nd.i] != null) ? ' · 🌀 Geheimer Ausgang gefunden' : ' · 🌀 Hier gibt es einen geheimen Ausgang…'; }
+  else { t = `${nd.t === 'boss' ? '👑 Boss' : '⚔️ Wächter'}: ${Wd[nd.t].n}`; s = NET.live ? 'Hüpf-Kampf zu zweit: springt ihm auf den Kopf!' : 'Rundenkampf mit Konter-System oder Hüpf-Kampf (auf den Kopf springen)'; }
   const bst = nd.t === 'lv' && save.best[wi + ':' + nd.i], gh = nd.t === 'lv' && loadGhost(wi, nd.i);
-  popup(`<div><b>${t}</b><br><small>${s}${bst ? ` · ${MEDAL[bst.m]} Bestzeit ${bst.t}s` : ''}</small></div><button class=g onclick="go(${d.k})">▶ ${d.k < pr ? 'Nochmal' : 'Start'}</button>${gh ? `<button class=d onclick="go(${d.k},true)">👻 Rennen</button>` : ''}`);
+  popup(`<div><b>${t}</b><br><small>${s}${bst ? ` · ${MEDAL[bst.m]} Bestzeit ${bst.t}s` : ''}</small></div>${nd.t === 'lv' ? '' : `<button class=g onclick="go(${d.k},false,1)">🦘 Hüpf-Kampf</button>`}${nd.t === 'lv' || !NET.live ? `<button class=${nd.t === 'lv' ? 'g' : 'd'} onclick="go(${d.k})">${nd.t === 'lv' ? '▶ ' + (d.k < pr ? 'Nochmal' : 'Start') : '⚔️ Rundenkampf'}</button>` : ''}${gh ? `<button class=d onclick="go(${d.k},true)">👻 Rennen</button>` : ''}`);
 }
-function go(k, race) {
+function go(k, race, jr) {
   if (NET.live && NET.mode === 'guest') return toast('Im Online-Koop wählt der Host das Level');
   lastK = k; const nd = nodes(save.w)[k];
-  if (nd.t === 'lv') play(save.w, nd.i, k, race); else if (NET.live && NET.mode === 'host') toast('Bosskämpfe gibt es nur solo – trenne zuerst im 🌐-Menü'); else battle(save.w, nd.t, k);
+  if (nd.t === 'lv') play(save.w, nd.i, k, race); else if (jr || (NET.live && NET.mode === 'host')) bossPlay(save.w, nd.t, k); else battle(save.w, nd.t, k);
 }
 
 // ---------- Laden ----------
@@ -179,7 +179,7 @@ function loop(t) {
   const rdt = (t - last) / 1000;
   if (!PREFS.saver) { slowN = rdt > .03 && rdt < .5 ? slowN + 1 : Math.max(0, slowN - 2); if (slowN > 90) { PREFS.saver = true; document.documentElement.classList.add('lowfx'); toast('🔋 Sparmodus automatisch an – läuft flüssiger'); } }
   if (r.net === 'guest') netGuestInput();
-  r.update(Math.min(.05, rdt) * (window.ADM ? ADM.slow : 1)); last = t; if (r.net === 'host') netHostTick(r, Math.min(.05, rdt)); if (r.canUse !== lastCan) { lastCan = r.canUse; buEl.style.opacity = r.canUse ? 1 : .35; }
+  r.update(Math.min(.05, rdt) * (window.ADM ? ADM.slow : 1) * (r.assist ? .8 : 1)); last = t; if (r.net === 'host') netHostTick(r, Math.min(.05, rdt)); if (r.canUse !== lastCan) { lastCan = r.canUse; buEl.style.opacity = r.canUse ? 1 : .35; }
   if (run === r) { r.draw(ctx); if (window.ADM) { ADM.tick(); ADM.overlay(ctx, r); } requestAnimationFrame(loop); } else looping = false;
 }
 const RANKV = { C: 0, B: 1, A: 2, S: 3 }, RCOL = { C: '#b9c6e6', B: '#7cd6ff', A: '#7dff9a', S: '#ffd54a' };
@@ -213,7 +213,9 @@ function endLevel(wi, li, k, r) {
   lines.push(`💥 ${r.hits} Treffer erhalten`);
   for (const n in r.kills) save.stats.kills[n] = (save.stats.kills[n] || 0) + r.kills[n];
   save.stats.secrets += r.secrets || 0; save.stats.levels++; save.stats.gates = (save.stats.gates || 0) + (r.gates || 0); save.stats.cps = (save.stats.cps || 0) + (r.cpHit || 0); if (r.coop) save.stats.coop = (save.stats.coop || 0) + 1; save.stats.chars = save.stats.chars || {}; for (const ch of r.chars || []) save.stats.chars[ch] = 1;
-  save.shards += gain; save.coins += Math.round((cg + tb) * (1 + .5 * (save.ng || 0))); save.cleared[key] = 1; save.prog[wi] = Math.max(save.prog[wi], k + 1); persist(); checkAch();
+  save.shards += gain; save.coins += Math.round((cg + tb) * (1 + .5 * (save.ng || 0))); save.cleared[key] = 1; save.prog[wi] = Math.max(save.prog[wi], k + 1);
+  if (r.secretExit && !gst) { const to = Math.min(nodes(wi).length - 1, k + 4); save.sec = save.sec || {}; save.sec[key] = to; save.prog[wi] = Math.max(save.prog[wi], to); lines.unshift('🌀 Geheimer Ausgang! Eine Abkürzung auf der Karte ist jetzt offen.'); }
+  persist(); checkAch();
   if (Math.floor(save.shards / SP_PT) > lv0) lines.push('⭐ Neuer Skillpunkt im Mondbaum!');
   ui.innerHTML = `<div class=card style="text-align:center;margin-top:8vh"><div>${catImg(HERO(), 90)}</div><h2>✅ ${W[wi].name} ${li + 1} geschafft!</h2><div class=rank style="color:${RCOL[rk]}">${rk}</div><p>🪙 +${cg} · 🌙 +${gain}${first ? '' : ' (Wiederholung)'} · ⏱ ${r.time}s übrig</p>${lines.map(l => `<p>${l}</p>`).join('')}<div class="row c"><button class=g onclick="map({from:${k},advance:true})">Weiter ▶</button><button onclick="play(${wi},${li},${k})">🔄 Nochmal</button><button class=d onclick="map({from:${k}})">🗺️ Karte</button></div></div>`;
   if (gst) netGuestWait();
@@ -262,7 +264,7 @@ function pauseGame() {
   $('#pause').style.display = 'flex';
 }
 function resumeGame() { if (!paused) return; paused = false; $('#pause').style.display = 'none'; AUDIO.duck(1); last = performance.now(); startLoop(); }
-function restartLevel() { $('#pause').style.display = 'none'; paused = false; AUDIO.duck(1); run = null; if (curLv.custom) return playCustom(curLv.custom, curLv.from); play(curLv.wi, curLv.li, curLv.k, curLv.race, null, curLv.daily); }
+function restartLevel() { $('#pause').style.display = 'none'; paused = false; AUDIO.duck(1); run = null; if (curLv.custom) return playCustom(curLv.custom, curLv.from); if (curLv.boss) return bossPlay(curLv.wi, curLv.boss, curLv.k, 1); play(curLv.wi, curLv.li, curLv.k, curLv.race, null, curLv.daily); }
 function quitLevel() { if (NET.hostRun) { NET.hostRun = false; netSend({ t: 'abort' }); } $('#pause').style.display = 'none'; paused = false; AUDIO.duck(1); run = null; AUDIO.stop(); if (curLv.custom) { if (curLv.from === 'editor') editor(); else showTitle(); } else if (curLv.daily) showTitle(); else map({ from: curLv.k }); }
 function setPref(k, v) { PREFS[k] = v; savePrefs(); }
 const TIPS = {
@@ -296,6 +298,7 @@ function chars(back) {
   ui.innerHTML = `<div class=hd><h2>🐱 ${charsBack === 'start' ? 'Wähle deine Katze' : 'Charaktere'}</h2><button class=d onclick="${charsBack === 'map' ? 'map()' : 'showTitle()'}">Zurück</button></div>
   ${charsBack === 'start' ? `<div class=card style="text-align:center"><p>Deine Katze ist die Heldin der Geschichte und hat einen eigenen Vorteil. Du kannst sie später jederzeit wechseln.</p><button class=g onclick="save.seen.pick = 1; persist(); start()">▶ Mit ${CHAR[C.p1].n} losziehen</button></div>` : ''}
   <div class=card><h3>Dein Charakter</h3>${['luna', 'minsch', 'kuro', 'mama', 'chey'].map(card).join('')}</div>
+  <div class=card><h3>Begleiter</h3><div class=row>${[[null, '🚫 Keiner'], ['bird', '🐦 Vogel – holt Münzen'], ['firefly', '✨ Glühwurm – leuchtet im Dunkeln']].map(([id, t]) => `<button class="${(save.pet || null) === id ? 'g' : 'd'}" onclick="save.pet=${id ? `'${id}'` : 'null'};persist();chars()">${t}</button>`).join('')}</div></div>
   <div class=card><small>Zu zweit spielst du online mit Freunden: im Titel „🌐 Online-Koop“ wählen. Jeder spielt mit seinem eigenen Charakter. Chey wird mit Neues Spiel+ freigeschaltet.</small></div>`;
 }
 function pickChar(id) { if (id === 'chey' && !cheyOpen()) return toast('🔒 Chey gibt es erst ab Neues Spiel+'); save.chars.p1 = id; persist(); chars(); }
@@ -310,7 +313,8 @@ function settings(msg) {
   <div class=card><h3>🔊 Ton</h3><label>🎵 Musik</label><input type=range min=0 max=1 step=.05 value="${PREFS.music}" oninput="setPref('music',+this.value)">
   <label>🔊 Effekte</label><input type=range min=0 max=1 step=.05 value="${PREFS.sfx}" oninput="setPref('sfx',+this.value)">
   <label style="display:block;margin:8px 0"><input type=checkbox ${PREFS.vib ? 'checked' : ''} style="width:auto" onchange="setPref('vib',this.checked)"> 📳 Vibration bei Treffern</label>
-  <label style="display:block;margin:8px 0"><input type=checkbox ${PREFS.retro ? 'checked' : ''} style="width:auto" onchange="setPref('retro',this.checked)"> 🎹 Retro-Sound (8-Bit-Musik statt Orchester)</label></div>
+  <label style="display:block;margin:8px 0"><input type=checkbox ${PREFS.retro ? 'checked' : ''} style="width:auto" onchange="setPref('retro',this.checked)"> 🎹 Retro-Sound (8-Bit-Musik statt Orchester)</label>
+  <label style="display:block;margin:8px 0"><input type=checkbox ${PREFS.assist ? 'checked' : ''} style="width:auto" onchange="setPref('assist',this.checked)"> 🧸 Hilfe-Modus (langsamer, +60 s, Abgründe ohne Schaden – nicht online)</label></div>
   <div class=card><h3>🎮 Steuerung &amp; Leistung</h3><label>Touch-Tasten</label>
   <div class=row><button class="${PREFS.btn === .85 ? 'g' : 'd'}" onclick="setPref('btn',.85);settings()">Klein</button><button class="${PREFS.btn === 1 ? 'g' : 'd'}" onclick="setPref('btn',1);settings()">Normal</button><button class="${PREFS.btn === 1.25 ? 'g' : 'd'}" onclick="setPref('btn',1.25);settings()">Groß</button></div>
   <label style="display:block;margin:8px 0"><input type=checkbox ${PREFS.lefty ? 'checked' : ''} style="width:auto" onchange="setPref('lefty',this.checked)"> ✋ Linkshänder-Layout (Tasten spiegeln)</label>
@@ -362,6 +366,7 @@ addEventListener('keydown', e => {
   if (typing(e)) return;
   if (mode === 'map' && MV) {
     if (e.key === 'Enter' || e.key === ' ') { const b = document.querySelector('#pop button'); if (b) b.click(); e.preventDefault(); return; }
+    if (e.key === 'h' || e.key === 'H') { const b = document.querySelectorAll('#pop button')[1]; if (b) b.click(); return; }
     const dir = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
     if (dir && !MV.moving) {
       const cur = MV.at.shop != null ? MV.L.shops[MV.at.shop].host : MV.at.k, nk = cur + dir;

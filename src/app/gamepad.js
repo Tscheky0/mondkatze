@@ -75,9 +75,9 @@ const GP = (() => {
           if (repeat('hl', L, now)) nav('left'); if (repeat('hr', R, now)) nav('right');
           if (edge('hc', pressed(g, B.cross))) confirm(); if (edge('hb', pressed(g, B.circle) || D)) exitHud();
         } else {
-          setHint('L1/R1 Welt · ◻ Beutel · △ Fähigkeiten · ↑ Menüleiste · Options Menü');
+          setHint('✕ Start · R2 zweite Wahl · L1/R1 Welt · ◻ Beutel · △ Fähigkeiten · ↑ Menüleiste');
           if (repeat('ml', L, now) && !MV.moving) key('ArrowLeft'); if (repeat('mr', R, now) && !MV.moving) key('ArrowRight');
-          if (edge('mc', pressed(g, B.cross))) key('Enter');
+          if (edge('mc', pressed(g, B.cross))) key('Enter'); if (edge('mc2', pressed(g, B.r2))) key('h');
           if (edge('mu', U)) enterHud();
           if (edge('mw1', pressed(g, B.l1))) swW(-1); if (edge('mw2', pressed(g, B.r1))) swW(1);
           if (edge('mbag', pressed(g, B.square))) bag(); if (edge('mtree', pressed(g, B.tri))) tree();

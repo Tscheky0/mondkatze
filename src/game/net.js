@@ -85,16 +85,16 @@ function netMsg(m) {
 
 // ---------- Host ----------
 function netGuestChar(hc) { const g = NET.peerChar; return g === hc ? (hc === 'luna' ? 'minsch' : 'luna') : g; }
-function netStartHost(r, wi, li, k) { NET.hostRun = true; NET.ev.length = 0; NET.acc = 0; netSend({ t: 'start', wi, li, k, S: r.S, chars: r.chars }); }
+function netStartHost(r, wi, li, k) { NET.hostRun = true; NET.ev.length = 0; NET.acc = 0; netSend({ t: 'start', wi, li, k, S: r.S, chars: r.chars, boss: r.bossK || 0 }); }
 NET.snapOf = r => {
   const P = r.players, cl = Math.min(...P.map(q => q.x)) - 700, cr = Math.max(...P.map(q => q.x)) + 900, rd = Math.round, f2 = v => Math.round(v * 100) / 100;
   return { t: 'snap', T: f2(r.t), tm: Math.round(r.time * 10) / 10, sh: r.shards, co: r.coins, mn: r.moon ? 1 : 0, ch: r.chest ? 1 : 0, bl: r.bell ? 1 : 0, kn: r.keyN, gt: r.gate && r.gate.open ? 1 : 0, cps: r.cps.map(c => c.on ? 1 : 0).join(''),
     msg: r.msgT > 0 ? r.msg : '', sk: f2(r.shake),
-    p: P.map(q => [rd(q.x), rd(q.y), rd(q.vx), rd(q.vy), q.face, q.hp, q.sh, f2(q.inv), q.ko ? 1 : 0, Math.min(99, rd(q.koT)), q.on ? 1 : 0, f2(q.swing), q.dashT > 0 ? 1 : 0]),
+    p: P.map(q => [rd(q.x), rd(q.y), rd(q.vx), rd(q.vy), q.face, q.hp, q.sh, f2(q.inv), q.ko ? 1 : 0, Math.min(99, rd(q.koT)), q.on ? 1 : 0, f2(q.swing), q.dashT > 0 ? 1 : 0, q.big ? 1 : 0, f2(q.star || 0), q.fire ? 1 : 0]),
     e: r.ent.filter(e => e.x > cl && e.x < cr).map(e => [e.t.b === 'swarm' ? -1 : r.Wd.enemies.indexOf(e.t), rd(e.x), rd(e.y), e.d, f2(e.fl), e.hp, Math.round(e.ph * 10) / 10, e.on ? 1 : 0]),
-    k: r.pick.filter(k => k.x > cl && k.x < cr).map(k => [k.k, rd(k.x), rd(k.y)]), s: r.shots.map(s => [rd(s.x), rd(s.y)]), es: r.eshots.map(s => [rd(s.x), rd(s.y), s.e || '']),
+    k: r.pick.filter(k => k.x > cl && k.x < cr).map(k => [k.k, rd(k.x), rd(k.y), k.u || 0]), s: r.shots.map(s => [rd(s.x), rd(s.y)]), es: r.eshots.map(s => [rd(s.x), rd(s.y), s.e || '']),
     d: r.drops.map(d => [rd(d.x), rd(d.y), DROPS.indexOf(d.d)]), cr: r.cr.filter(k => k.gone).map(k => k.tx + ',' + k.ty).join(';'), ro: r.rocks.map(k => [rd(k.x), rd(k.y)]), wa: r.warn.map(w => rd(w.x)),
-    fx: r.fx.map(x => [rd(x.x), rd(x.y), x.txt, x.c, f2(x.t)]), qb: r.qbUsed.join(';'), ev: NET.ev.splice(0, 60) };
+    fx: r.fx.map(x => [rd(x.x), rd(x.y), x.txt, x.c, f2(x.t)]), b: r.boss ? (b => [rd(b.x), rd(b.y), f2(b.hp), b.max, b.st, b.face, f2(b.inv), b.ph, b.atk, f2(b.t), f2(b.hitT)])(r.boss) : 0, qb: r.qbUsed.join(';'), ev: NET.ev.splice(0, 60) };
 };
 function netHostTick(r, dt) { if (!NET.live || NET.mode !== 'host') return; NET.acc += dt; if (NET.acc < .05) return; NET.acc = 0; netSend(NET.snapOf(r)); }
 
@@ -107,12 +107,13 @@ function netGuestInput() {
 }
 function netStartGuest(m) {
   if (!Array.isArray(m.chars) || m.wi < 0 || m.wi >= W.length || m.li < 0 || m.li >= W[m.wi].n || !m.S) return;
-  run = null; paused = false; AUDIO.stop(); curLv = { wi: m.wi, li: m.li, k: m.k, net: 'guest' };
+  const boss = ['boss', 'mini'].includes(m.boss) ? m.boss : null;
+  run = null; paused = false; AUDIO.stop(); curLv = { wi: m.wi, li: m.li, k: m.k, net: 'guest', boss };
   show('play'); tc.classList.remove('co'); $('#bd').style.display = charStats(m.S, m.chars[1]).dash ? 'flex' : 'none';
-  AUDIO.play('level', { wi: m.wi, li: m.li, kind: levelSpec(m.wi, m.li).kind });
-  run = new Run(m.wi, m.li, m.S, () => { }, { net: 'guest', chars: m.chars }); last = performance.now(); startLoop();
+  if (boss) AUDIO.play('boss', { wi: m.wi }); else AUDIO.play('level', { wi: m.wi, li: m.li, kind: levelSpec(m.wi, m.li).kind });
+  run = new Run(m.wi, m.li, m.S, () => { }, { net: 'guest', chars: m.chars, boss }); last = performance.now(); startLoop();
 }
-function netEndGuest(r) { if (typeof run === 'undefined' || !run || !curLv || curLv.net !== 'guest') return; const c = curLv; run = null; endLevel(c.wi, c.li, c.k, { ...r, rec: r.rec || [] }); }
+function netEndGuest(r) { if (typeof run === 'undefined' || !run || !curLv || curLv.net !== 'guest') return; const c = curLv; run = null; if (c.boss) bossEnd(c.wi, c.boss, c.k, r); else endLevel(c.wi, c.li, c.k, { ...r, rec: r.rec || [] }); }
 function netGuestWait() { const row = ui.querySelector('.row.c'); if (row) row.innerHTML = '<small style="width:100%;text-align:center">Der Host wählt das nächste Level…</small><button class=d onclick="netLeave()">Trennen</button>'; }
 
 Run.prototype.updateGuest = function (dt) {
@@ -135,6 +136,7 @@ Run.prototype.updateGuest = function (dt) {
   }
   if (rm.tx != null) { const dx = rm.tx - rm.x, dy = rm.ty - rm.y; if (Math.hypot(dx, dy) > 200) { rm.x = rm.tx; rm.y = rm.ty; } else { rm.x += dx * k; rm.y += dy * k; } }
   const ld = this.lead(); this.p = ld; this.cam = clamp(ld.x - VW * .4, 0, this.cols * TS - VW);
+  this.petStep(dt);
 };
 Run.prototype.applySnap = function (m) {
   if (!Array.isArray(m.p) || m.p.length !== 2) return;
@@ -143,15 +145,16 @@ Run.prototype.applySnap = function (m) {
   if (m.gt && this.gate && !this.gate.open) { this.gate.open = true; for (let y = 0; y < this.gate.y1; y++) if (this.g[y][this.gate.tx] === 7) this.g[y][this.gate.tx] = 0; this.g._ch = []; }
   if (m.msg && m.msg !== this.msg) this.say(m.msg);
   m.p.forEach((a, i) => {
-    const q = this.players[i], hp0 = q.hp; q.hp = a[5]; q.sh = a[6]; q.ko = !!a[8]; q.koT = a[9];
+    const q = this.players[i], hp0 = q.hp; q.hp = a[5]; q.sh = a[6]; q.ko = !!a[8]; q.koT = a[9]; q.big = !!a[13]; q.star = a[14] || 0; q.fire = !!a[15];
     if (i === this.me) { q.tx = a[0]; q.ty = a[1]; q.inv = a[7]; if (q.hp < hp0 && typeof vib !== 'undefined') vib(70); }
     else { q.tx = a[0]; q.ty = a[1]; q.vx = a[2]; q.vy = a[3]; q.face = a[4]; q.inv = a[7]; q.on = !!a[10]; q.swing = a[11]; q.dashT = a[12] ? .1 : 0; }
   });
   const sw = this.swarmT || (this.swarmT = { n: 'Schwarm', e: SWARM_E[this.wi], hp: 1, b: 'swarm', s: 100, sz: 20 });
   this.ent = m.e.map(a => { const t = a[0] < 0 ? sw : this.Wd.enemies[a[0]]; if (!t) return null; const fly = t.b === 'fly', swm = a[0] < 0; return { t, x: a[1], y: a[2], d: a[3], fl: a[4], hp: a[5], ph: a[6], on: !!a[7], w: swm ? 16 : 24, h: swm ? 16 : fly ? 24 : 26, vx: 0, vy: 0, sid: -1 }; }).filter(Boolean);
-  this.pick = m.k.map(a => ({ k: a[0], x: a[1], y: a[2] })); this.shots = m.s.map(a => ({ x: a[0], y: a[1], w: 12, h: 10 })); this.eshots = m.es.map(a => ({ x: a[0], y: a[1], e: a[2], w: 12, h: 12 }));
+  this.pick = m.k.map(a => ({ k: a[0], x: a[1], y: a[2], u: a[3] })); this.shots = m.s.map(a => ({ x: a[0], y: a[1], w: 12, h: 10 })); this.eshots = m.es.map(a => ({ x: a[0], y: a[1], e: a[2], w: 12, h: 12 }));
   this.drops = m.d.map(a => ({ x: a[0], y: a[1], d: DROPS[a[2]] || DROPS[0] })); this.rocks = m.ro.map(a => ({ x: a[0], y: a[1], w: 26, h: 26 })); this.warn = m.wa.map(x => ({ x, t: .5 }));
   this.fx = m.fx.map(a => ({ x: a[0], y: a[1], txt: a[2], c: a[3], t: a[4] }));
+  if (m.b && this.boss) { const b = this.boss, ph0 = b.ph; [b.x, b.y, b.hp, b.max, b.st, b.face, b.inv, b.ph, b.atk, b.t, b.hitT] = m.b; if (b.ph !== ph0) AUDIO.play('boss', { wi: this.wi, ph: b.ph }); }
   // brechende Planken
   const now = new Set(m.cr ? m.cr.split(';') : []); this.goneSet = this.goneSet || new Set(); let ch = false;
   for (const key of now) if (!this.goneSet.has(key)) { const [tx, ty] = key.split(',').map(Number); if (this.g[ty] && this.g[ty][tx] === 5) { this.g[ty][tx] = 0; ch = true; } }
