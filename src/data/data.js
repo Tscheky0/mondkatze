@@ -79,21 +79,21 @@ const DROPS = [
 // Skillbaum: Kosten pro Rang = Rangnummer. req = Vorgaenger muss Rang >= 1 haben
 const SKILLS = [
   { b: 'Kraft', list: [
-    { id: 'pow1', n: 'Mondklinge', d: '+1 Schaden', max: 3 },
-    { id: 'crit', n: 'Treffsicher', d: '+10% Krit', max: 3, req: 'pow1' },
+    { id: 'pow1', n: 'Mondklinge', d: '+1 Schaden', max: 5 },
+    { id: 'crit', n: 'Treffsicher', d: '+10% Krit', max: 4, req: 'pow1' },
     { id: 'fire', n: 'Mondwurf', d: 'Fernangriff', max: 1, req: 'pow1' }] },
   { b: 'Leben', list: [
-    { id: 'hp1', n: 'Zähes Herz', d: '+1 Herz', max: 3 },
-    { id: 'shd', n: 'Mondschild', d: 'Start-Schild', max: 2, req: 'hp1' },
-    { id: 'reg', n: 'Erholung', d: 'Regeneration', max: 2, req: 'hp1' }] },
+    { id: 'hp1', n: 'Zähes Herz', d: '+1 Herz', max: 5 },
+    { id: 'shd', n: 'Mondschild', d: 'Start-Schild', max: 3, req: 'hp1' },
+    { id: 'reg', n: 'Erholung', d: 'Regeneration', max: 3, req: 'hp1' }] },
   { b: 'Wind', list: [
-    { id: 'spd', n: 'Flinke Pfoten', d: '+8% Tempo', max: 3 },
-    { id: 'jmp', n: 'Sprungkraft', d: '+6% Sprung', max: 3, req: 'spd' },
-    { id: 'xj', n: 'Doppelsprung', d: 'Extra-Sprung', max: 1, req: 'jmp' }] },
+    { id: 'spd', n: 'Flinke Pfoten', d: '+8% Tempo', max: 5 },
+    { id: 'jmp', n: 'Sprungkraft', d: '+6% Sprung', max: 4, req: 'spd' },
+    { id: 'xj', n: 'Doppelsprung', d: 'Extra-Sprung (Rang 2: dreifach)', max: 2, req: 'jmp' }] },
   { b: 'Zeit', list: [
-    { id: 'tm1', n: 'Sanduhr', d: '+10s pro Level', max: 3 },
-    { id: 'tm2', n: 'Zeitraub', d: 'Kills +2s', max: 2, req: 'tm1' },
-    { id: 'mag', n: 'Mondsog', d: 'Magnet', max: 2, req: 'tm1' }] },
+    { id: 'tm1', n: 'Sanduhr', d: '+10s pro Level', max: 4 },
+    { id: 'tm2', n: 'Zeitraub', d: 'Kills +2s', max: 3, req: 'tm1' },
+    { id: 'mag', n: 'Mondsog', d: 'Magnet', max: 3, req: 'tm1' }] },
 ];
 
 // ---------- Story ----------

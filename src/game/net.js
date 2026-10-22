@@ -43,7 +43,7 @@ async function netHost() {
       try {
         if (Date.now() - t0 > 600000) throw new Error('Zeit abgelaufen – es ist niemand beigetreten.');
         const g = await ACC.db(`rooms/${code}/guest`, 'GET'); if (!g || !g.answer) return;
-        clearInterval(NET.poll); NET.poll = 0; NET.peer = String(g.name || '').slice(0, 16); NET.peerChar = ['luna', 'minsch', 'chey'].includes(g.char) ? g.char : 'minsch';
+        clearInterval(NET.poll); NET.poll = 0; NET.peer = String(g.name || '').slice(0, 16); NET.peerChar = ['luna', 'minsch', 'chey', 'kuro', 'mama'].includes(g.char) ? g.char : 'minsch';
         await pc.setRemoteDescription({ type: 'answer', sdp: g.answer }); NET.status = 'Verbinde mit ' + NET.peer + '…'; netRefresh();
         setTimeout(() => { if (!NET.live && NET.mode === 'host') netFail('Verbindung fehlgeschlagen – das Netzwerk blockiert die direkte Verbindung.'); }, 15000);
       } catch (e) { netFail(e.message); }
@@ -56,7 +56,7 @@ async function netJoin(code) {
   NET.mode = 'guest'; NET.code = code; NET.status = 'Verbinde…'; netRefresh();
   try {
     const room = await ACC.db(`rooms/${code}`, 'GET'); if (!room || !room.host || !room.host.offer || Date.now() - room.host.ts > 900000) throw new Error('Diesen Raum gibt es nicht (mehr).');
-    NET.peer = String(room.host.name || '').slice(0, 16); NET.peerChar = ['luna', 'minsch', 'chey'].includes(room.host.char) ? room.host.char : 'luna';
+    NET.peer = String(room.host.name || '').slice(0, 16); NET.peerChar = ['luna', 'minsch', 'chey', 'kuro', 'mama'].includes(room.host.char) ? room.host.char : 'luna';
     const pc = netPC(); pc.ondatachannel = e => netChannel(e.channel);
     await pc.setRemoteDescription({ type: 'offer', sdp: room.host.offer }); await pc.setLocalDescription(await pc.createAnswer()); await netGather(pc);
     await ACC.db(`rooms/${code}/guest`, 'PUT', { uid: ACC.user.uid, name: ACC.user.name, char: myChar(), answer: pc.localDescription.sdp, ts: Date.now() });
@@ -74,7 +74,7 @@ function netDown(why) {
 
 // ---------- Nachrichten ----------
 function netMsg(m) {
-  if (m.t === 'hello') { NET.peer = String(m.name || '').slice(0, 16); if (['luna', 'minsch', 'chey'].includes(m.char)) NET.peerChar = m.char; netRefresh(); }
+  if (m.t === 'hello') { NET.peer = String(m.name || '').slice(0, 16); if (['luna', 'minsch', 'chey', 'kuro', 'mama'].includes(m.char)) NET.peerChar = m.char; netRefresh(); }
   else if (m.t === 'in' && NET.mode === 'host') { const n = NETIN, b = +m.m || 0; n.l = b & 1 ? 1 : 0; n.r = b & 2 ? 1 : 0; n.j = b & 4 ? 1 : 0; if (m.j) n.jb = .12; if (m.a) n.ap = 1; if (m.d) n.dash = 1; if (m.u) n.use = 1; }
   else if (m.t === 'start' && NET.mode === 'guest') netStartGuest(m);
   else if (m.t === 'snap' && NET.mode === 'guest') { if (typeof run !== 'undefined' && run && run.guest) run.applySnap(m); }
@@ -94,7 +94,7 @@ NET.snapOf = r => {
     e: r.ent.filter(e => e.x > cl && e.x < cr).map(e => [e.t.b === 'swarm' ? -1 : r.Wd.enemies.indexOf(e.t), rd(e.x), rd(e.y), e.d, f2(e.fl), e.hp, Math.round(e.ph * 10) / 10, e.on ? 1 : 0]),
     k: r.pick.filter(k => k.x > cl && k.x < cr).map(k => [k.k, rd(k.x), rd(k.y)]), s: r.shots.map(s => [rd(s.x), rd(s.y)]), es: r.eshots.map(s => [rd(s.x), rd(s.y), s.e || '']),
     d: r.drops.map(d => [rd(d.x), rd(d.y), DROPS.indexOf(d.d)]), cr: r.cr.filter(k => k.gone).map(k => k.tx + ',' + k.ty).join(';'), ro: r.rocks.map(k => [rd(k.x), rd(k.y)]), wa: r.warn.map(w => rd(w.x)),
-    fx: r.fx.map(x => [rd(x.x), rd(x.y), x.txt, x.c, f2(x.t)]), ev: NET.ev.splice(0, 60) };
+    fx: r.fx.map(x => [rd(x.x), rd(x.y), x.txt, x.c, f2(x.t)]), qb: r.qbUsed.join(';'), ev: NET.ev.splice(0, 60) };
 };
 function netHostTick(r, dt) { if (!NET.live || NET.mode !== 'host') return; NET.acc += dt; if (NET.acc < .05) return; NET.acc = 0; netSend(NET.snapOf(r)); }
 
@@ -156,6 +156,7 @@ Run.prototype.applySnap = function (m) {
   const now = new Set(m.cr ? m.cr.split(';') : []); this.goneSet = this.goneSet || new Set(); let ch = false;
   for (const key of now) if (!this.goneSet.has(key)) { const [tx, ty] = key.split(',').map(Number); if (this.g[ty] && this.g[ty][tx] === 5) { this.g[ty][tx] = 0; ch = true; } }
   for (const key of this.goneSet) if (!now.has(key)) { const [tx, ty] = key.split(',').map(Number); if (this.g[ty] && this.g[ty][tx] === 0) { this.g[ty][tx] = 5; ch = true; } }
+  if (m.qb) for (const key of m.qb.split(';')) { const [tx, ty] = key.split(',').map(Number); if (this.g[ty] && this.g[ty][tx] === 8) { this.g[ty][tx] = 9; ch = true; } }
   this.goneSet = now; if (ch) this.g._ch = [];
   for (const ev of m.ev) {
     if (ev[0] === 'n') { if (!['jump', 'jump2', 'wall', 'land', 'dash', 'step', 'spring'].includes(ev[1])) AUDIO.sfx(ev[1]); }
@@ -166,7 +167,7 @@ Run.prototype.applySnap = function (m) {
 // ---------- Lobby ----------
 function online() {
   show('ui'); const u = ACC.user, hostLive = NET.live && NET.mode === 'host', guestLive = NET.live && NET.mode === 'guest', busy = !NET.live && NET.mode;
-  const names = { luna: 'Luna', minsch: 'Minsch', chey: 'Chey' };
+  const names = { luna: 'Luna', minsch: 'Minsch', chey: 'Chey', kuro: 'Kuro', mama: 'Mama-Kitty' };
   let body;
   if (!ACC.ready()) body = `<div class=card><h3>Noch nicht eingerichtet</h3><p>Für Online-Koop braucht das Spiel eine kostenlose Firebase-Datenbank.</p><div class=row><button onclick="account()">👤 Einrichtung öffnen</button></div></div>`;
   else if (!u) body = `<div class=card><h3>Bitte anmelden</h3><p>Online-Koop gibt es nur mit Konto – so bleibt der Fortschritt für beide gespeichert.</p><div class=row><button class=g onclick="account()">👤 Anmelden / Konto erstellen</button></div></div>`;

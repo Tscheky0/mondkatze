@@ -11,7 +11,8 @@ const persistRaw = () => { try { localStorage.setItem(SAVE_KEY, JSON.stringify(s
 const persist = () => { save.ts = Date.now(); persistRaw(); CLOUD.touch(); };
 
 const spent = () => Object.values(save.skills).reduce((a, r) => a + r * (r + 1) / 2, 0);
-const pts = () => Math.floor(save.shards / 20) - spent();
+const SP_PT = 50; // Mondsplitter pro Skillpunkt (vorher 20 – man war zu schnell voll geskillt)
+const pts = () => Math.max(0, Math.floor(save.shards / SP_PT) - spent());
 const lvl = () => 1 + Object.values(save.skills).reduce((a, b) => a + b, 0);
 
 function stats() {
@@ -52,7 +53,7 @@ function showTitle() {
   <p>Der Mondverschlinger hat <b>Chey</b> entführt und den Mond verschluckt.<br>Hilf <b>Luna</b>, Chey zu retten!</p>
   <div class="row c"><button class=g onclick="start()">▶ ${save.seen.intro ? 'Weiter' : 'Neues Abenteuer'}</button><button class=r onclick="resetGame()">Neu starten</button></div>
   <div class="row c"><button class=g onclick="daily()">📅 Tageslevel${save.daily.streak ? ' 🔥' + save.daily.streak : ''}</button><button class=d onclick="chars('title')">🐱 Charaktere</button><button class=d onclick="editor('title')">🛠️ Editor</button><button class=d onclick="album()">📖 Album</button><button class=d onclick="account()">👤 ${ACC.user ? esc(ACC.user.name) : 'Konto'}</button><button class=g onclick="online()">🌐 Online-Koop</button><button class=d onclick="settings()">⚙️ Einstellungen &amp; Cloud</button><button class=d data-fs onclick="FS.toggle()">⛶</button>${save.cleared['5:boss'] ? `<button class=g onclick="startNG()">🔁 Neues Spiel+ (${(save.ng || 0) + 1})</button>` : ''}</div>
-  <small>Handy quer halten · Android/iPhone: im Browser "Zum Startbildschirm"</small><br><small>Version 23</small></div>`;
+  <small>Handy quer halten · Android/iPhone: im Browser "Zum Startbildschirm"</small><br><small>Version 24</small></div>`;
 }
 function start() { if (!save.seen.intro) cine('intro', {}, () => story(STORY.intro, () => { save.seen.intro = 1; persist(); map(); })); else map(); }
 function resetGame() { if (confirm('Gesamten Fortschritt löschen?')) { save = defSave(); persist(); lastAt = null; showTitle(); } }
@@ -79,7 +80,7 @@ function map(opt) {
 function hud() {
   const Wd = W[save.w];
   $('#hud').innerHTML = `<div><button class=d onclick="swW(-1)">◀</button><span>${Wd.emoji} ${Wd.name}${save.ng ? ' · NG+' + save.ng : ''}</span><button class=d onclick="swW(1)">▶</button></div>
-  <div><span>🪙 ${save.coins}</span><span>🌙 ${save.shards % 20}/20</span><span>⭐ ${pts()}</span><button onclick="bag()">🎒</button><button onclick="tree()">🌟${pts() > 0 ? '❗' : ''}</button><button class=d onclick="online()">🌐${NET.live ? ' ' + esc(NET.peer) : ''}</button><button class=d onclick="chars('map')">🐱</button><button class=d data-fs onclick="FS.toggle()">⛶</button><button class=d onclick="showTitle()">☰</button></div>`;
+  <div><span>🪙 ${save.coins}</span><span>🌙 ${save.shards % SP_PT}/${SP_PT}</span><span>⭐ ${pts()}</span><button onclick="bag()">🎒</button><button onclick="tree()">🌟${pts() > 0 ? '❗' : ''}</button><button class=d onclick="online()">🌐${NET.live ? ' ' + esc(NET.peer) : ''}</button><button class=d onclick="chars('map')">🐱</button><button class=d data-fs onclick="FS.toggle()">⛶</button><button class=d onclick="showTitle()">☰</button></div>`;
 }
 function swW(d) {
   const n = save.w + d; if (n < 0 || n >= W.length) return;
@@ -112,8 +113,8 @@ function shop(wi, s) {
   for (const it of items) { const own = save.own[it.id], p = ip(it); h += `<div class=card><b>${it.e} ${it.n}</b><br><small>${it.d}</small><br><button ${own || save.coins < p ? 'disabled' : ''} onclick="buy('i','${it.id}',${p})">${own ? 'Gekauft' : '🪙 ' + p}</button></div>`; }
   h += '</div><h3>Verbrauchbar</h3><div class=grid>';
   for (const c of CONS) h += `<div class=card><b>${c.e} ${c.n}</b> (${save.cons[c.id] || 0})<br><small>${c.d}</small><br><button ${save.coins < c.p ? 'disabled' : ''} onclick="buy('c','${c.id}',${c.p})">🪙 ${c.p}</button></div>`;
-  const sp = 100 + wi * 20;
-  h += `<div class=card><b>🌙 20 Mondsplitter</b><br><small>= 1 Skillpunkt</small><br><button ${save.coins < sp ? 'disabled' : ''} onclick="buy('s','',${sp})">🪙 ${sp}</button></div></div>`;
+  const sp = 250 + wi * 50;
+  h += `<div class=card><b>🌙 ${SP_PT} Mondsplitter</b><br><small>= 1 Skillpunkt</small><br><button ${save.coins < sp ? 'disabled' : ''} onclick="buy('s','',${sp})">🪙 ${sp}</button></div></div>`;
   const cs = COS.filter(x => x.w === wi && x.s === s);
   if (cs.length) {
     h += '<h3>👒 Garderobe</h3><div class=grid>';
@@ -126,7 +127,7 @@ function shop(wi, s) {
 }
 function buy(kind, id, p) {
   if (save.coins < p) return; save.coins -= p;
-  if (kind === 'o') { save.cos.own[id] = 1; save.cos.eq[COS.find(x => x.id === id).t] = id; AUDIO.sfx('power'); } else if (kind === 'i') save.own[id] = 1; else if (kind === 'c') save.cons[id] = (save.cons[id] || 0) + 1; else save.shards += 20;
+  if (kind === 'o') { save.cos.own[id] = 1; save.cos.eq[COS.find(x => x.id === id).t] = id; AUDIO.sfx('power'); } else if (kind === 'i') save.own[id] = 1; else if (kind === 'c') save.cons[id] = (save.cons[id] || 0) + 1; else save.shards += SP_PT;
   persist(); checkAch(); shop(curShop.wi, curShop.s);
 }
 function leaveShop() { map({ shop: curShop.s }); }
@@ -143,7 +144,7 @@ function bag() {
 function tog(id) { const i = save.load.indexOf(id); if (i >= 0) save.load.splice(i, 1); else if (save.load.length < 3) save.load.push(id); persist(); bag(); }
 function tree() {
   show('ui');
-  let h = `<div class=hd><h2>🌟 Mondbaum · Luna Lv ${lvl()}</h2><b>⭐ ${pts()}</b><button class=d onclick="map()">Zurück</button></div><p><small>20 Mondsplitter = 1 Punkt. Kosten = Rangnummer.</small></p><div class=sk>`;
+  let h = `<div class=hd><h2>🌟 Mondbaum · Luna Lv ${lvl()}</h2><b>⭐ ${pts()}</b><button class=d onclick="map()">Zurück</button></div><p><small>${SP_PT} Mondsplitter = 1 Punkt. Je stärker du bist, desto härter werden die Level. Kosten = Rangnummer.</small></p><div class=sk>`;
   for (const b of SKILLS) {
     h += `<div><h3>${b.b}</h3>`;
     for (const s of b.list) {
@@ -194,7 +195,7 @@ function endLevel(wi, li, k, r) {
   const gst = NET.live && NET.mode === 'guest';
   run = null; show('ui'); AUDIO.stop(); AUDIO.sfx(r.win ? 'win' : 'lose');
   if (!r.win) { ui.innerHTML = `<div class=card style="text-align:center;margin-top:10vh"><h2>💀 ${r.why}</h2><div class="row c">${r.cpX ? `<button class=g onclick="play(${wi},${li},${k},false,{cpX:${Math.round(r.cpX)},cpY:${Math.round(r.cpY)},cpTime:${Math.round(r.cpTime)}})">🏮 Vom Checkpoint</button>` : ''}<button onclick="play(${wi},${li},${k})">${r.cpX ? 'Von vorn' : 'Nochmal'}</button><button class=d onclick="map({from:${k}})">Karte</button></div></div>`; if (gst) netGuestWait(); return; }
-  const key = wi + ':' + li, first = !save.cleared[key], lv0 = Math.floor(save.shards / 20), lines = [];
+  const key = wi + ':' + li, first = !save.cleared[key], lv0 = Math.floor(save.shards / SP_PT), lines = [];
   let gain = first ? r.shards : Math.ceil(r.shards * .25);
   const cg = first ? r.coins : Math.ceil(r.coins * .5), tb = Math.floor(r.time / 5);
   if (tb > 0) lines.push(`⏱ Zeitbonus: +${tb} 🪙`);
@@ -213,7 +214,7 @@ function endLevel(wi, li, k, r) {
   for (const n in r.kills) save.stats.kills[n] = (save.stats.kills[n] || 0) + r.kills[n];
   save.stats.secrets += r.secrets || 0; save.stats.levels++; save.stats.gates = (save.stats.gates || 0) + (r.gates || 0); save.stats.cps = (save.stats.cps || 0) + (r.cpHit || 0); if (r.coop) save.stats.coop = (save.stats.coop || 0) + 1; save.stats.chars = save.stats.chars || {}; for (const ch of r.chars || []) save.stats.chars[ch] = 1;
   save.shards += gain; save.coins += Math.round((cg + tb) * (1 + .5 * (save.ng || 0))); save.cleared[key] = 1; save.prog[wi] = Math.max(save.prog[wi], k + 1); persist(); checkAch();
-  if (Math.floor(save.shards / 20) > lv0) lines.push('⭐ Neuer Skillpunkt im Mondbaum!');
+  if (Math.floor(save.shards / SP_PT) > lv0) lines.push('⭐ Neuer Skillpunkt im Mondbaum!');
   ui.innerHTML = `<div class=card style="text-align:center;margin-top:8vh"><div>${catImg('luna', 90)}</div><h2>✅ ${W[wi].name} ${li + 1} geschafft!</h2><div class=rank style="color:${RCOL[rk]}">${rk}</div><p>🪙 +${cg} · 🌙 +${gain}${first ? '' : ' (Wiederholung)'} · ⏱ ${r.time}s übrig</p>${lines.map(l => `<p>${l}</p>`).join('')}<div class="row c"><button class=g onclick="map({from:${k},advance:true})">Weiter ▶</button><button onclick="play(${wi},${li},${k})">🔄 Nochmal</button><button class=d onclick="map({from:${k}})">🗺️ Karte</button></div></div>`;
   if (gst) netGuestWait();
 }
@@ -293,7 +294,7 @@ function chars(back) {
   if (back) charsBack = back; show('ui'); const C = save.chars;
   const card = id => id === 'chey' && !cheyOpen() ? `<div class=it style="width:150px;opacity:.55"><div class=e>🔒</div><b>Chey</b><br><small>Wird mit Neues Spiel+ freigeschaltet</small></div>` : `<div class="it ${C.p1 === id ? 'sel' : ''}" style="width:150px" tabindex=0 onclick="pickChar('${id}')"><div class=e>${catImg(id, 76)}</div><b>${CHAR[id].n}</b><br><small>${CHAR[id].d}</small></div>`;
   ui.innerHTML = `<div class=hd><h2>🐱 Charaktere</h2><button class=d onclick="${charsBack === 'map' ? 'map()' : 'showTitle()'}">Zurück</button></div>
-  <div class=card><h3>Dein Charakter</h3>${['luna', 'minsch', 'chey'].map(card).join('')}</div>
+  <div class=card><h3>Dein Charakter</h3>${['luna', 'minsch', 'kuro', 'mama', 'chey'].map(card).join('')}</div>
   <div class=card><small>Zu zweit spielst du online mit Freunden: im Titel „🌐 Online-Koop“ wählen. Jeder spielt mit seinem eigenen Charakter. Chey wird mit Neues Spiel+ freigeschaltet.</small></div>`;
 }
 function pickChar(id) { if (id === 'chey' && !cheyOpen()) return toast('🔒 Chey gibt es erst ab Neues Spiel+'); save.chars.p1 = id; persist(); chars(); }

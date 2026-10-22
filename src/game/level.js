@@ -9,6 +9,8 @@ function charStats(S, id) {
   const s = Object.assign({}, S);
   if (id === 'minsch') { s.spd += .1; s.wall = Math.max(s.wall, 1); }
   if (id === 'chey') { s.dash = Math.max(s.dash, 1); }
+  if (id === 'kuro') { s.xj = Math.max(s.xj, 1); s.jmp += .04; }
+  if (id === 'mama') { s.maxhp += 1; s.regen = Math.max(s.regen, 1); }
   return s;
 }
 const MOONLV = [1, 3, 5, 7, 9];
@@ -48,36 +50,48 @@ function levelSpec(wi, li) {
 function genLevel(wi, li, seed) {
   const sp = levelSpec(wi, li), r = rng(wi * 1000 + li * 37 + 7 + (seed || 0) * 101), st = sp.style, mods = sp.mods, cols = 100 + li * 8 + wi * 6;
   const g = []; for (let y = 0; y < ROWS; y++) g.push(new Uint8Array(cols));
-  const diff = Math.min(.5, .12 + wi * .04 + li * .012);
-  const PR = { plain: { l: [4, 11], gp: diff, gs: [2, 3], sp: .4, ss: 1 }, hills: { l: [3, 7], gp: diff * .25, gs: [2, 2], sp: .85, ss: 2 },
-    gaps: { l: [3, 6], gp: .75, gs: [2, 3], sp: .3, ss: 1 }, sky: { l: [3, 5], gp: 1, gs: [2, 3], sp: .75, ss: 2 },
-    stairs: { l: [3, 4], gp: diff * .3, gs: [2, 2], sp: 1, ss: 1 }, cave: { l: [4, 10], gp: diff, gs: [2, 3], sp: .4, ss: 1 } }[st];
+  const diff = Math.min(.62, .2 + wi * .05 + li * .015), big = wi >= 2 ? 1 : 0; // ab Welt 3 breitere Abgruende
+  const PR = { plain: { l: [4, 10], gp: diff, gs: [2, 3 + big], sp: .45, ss: 1 }, hills: { l: [3, 7], gp: diff * .5, gs: [2, 3], sp: .85, ss: 2 },
+    gaps: { l: [3, 6], gp: .8, gs: [3, 4], sp: .3, ss: 1 }, sky: { l: [3, 5], gp: 1, gs: [3, 4 + big], sp: .75, ss: 2 },
+    stairs: { l: [3, 4], gp: diff * .4, gs: [2, 3], sp: 1, ss: 1 }, cave: { l: [4, 9], gp: diff, gs: [2, 3], sp: .4, ss: 1 } }[st];
   const lo = st === 'sky' || st === 'hills' || st === 'stairs' ? ROWS - 9 : ROWS - 6, hi = st === 'sky' ? ROWS - 4 : ROWS - 2;
   const spots = [], gaps = []; let x = 0, h = ROWS - 3, sd = -1;
   while (x < cols) {
-    const last = x >= cols - 14;
+    const last = x >= cols - 16;
     let len = x < 8 ? 8 : last ? cols - x : PR.l[0] + Math.floor(r() * (PR.l[1] - PR.l[0] + 1));
     len = Math.min(len, cols - x);
     const bot = st === 'sky' ? Math.min(ROWS, h + 3) : ROWS;
     for (let c = x; c < x + len; c++) for (let y = h; y < bot; y++) g[y][c] = 1;
     spots.push({ x0: x, x1: x + len, y: h }); x += len;
     if (x >= cols) break;
-    if (cols - x > 14 && r() < PR.gp) { const gp = PR.gs[0] + Math.floor(r() * (PR.gs[1] - PR.gs[0] + 1)); gaps.push({ x0: x, x1: x + gp, si: spots.length - 1 }); x += gp; }
-    if (!last) {
-      if (st === 'stairs') { h += sd; if (h <= ROWS - 9) sd = 1; if (h >= ROWS - 3) sd = -1; }
-      else if (r() < PR.sp) h += (r() < .5 ? -1 : 1) * (1 + Math.floor(r() * PR.ss));
+    let nh = h;
+    if (cols - x > 16) {
+      if (st === 'stairs') { nh += sd; if (nh <= ROWS - 9) sd = 1; if (nh >= ROWS - 3) sd = -1; }
+      else if (r() < PR.sp) nh += (r() < .5 ? -1 : 1) * (1 + Math.floor(r() * PR.ss));
+      nh = clamp(nh, lo, hi);
+      // Luecke: so breit wie moeglich, aber mit normalem Sprung schaffbar (hoeheres Ufer = schmaler)
+      if (r() < PR.gp) { const up = h - nh, cap = up >= 2 ? 2 : up === 1 ? 3 : st === 'sky' ? 5 : 4, gp = Math.min(cap, PR.gs[0] + Math.floor(r() * (PR.gs[1] - PR.gs[0] + 1))); gaps.push({ x0: x, x1: x + gp, si: spots.length - 1 }); x += gp; }
     }
-    h = clamp(h, lo, hi);
+    h = nh;
   }
   for (const s of spots) {
-    const len = s.x1 - s.x0;
-    if (st !== 'sky' && len >= 7 && s.x0 > 10 && s.x1 < cols - 14 && r() < .35 + wi * .03) {
-      const c = s.x0 + 2 + Math.floor(r() * (len - 5)), n = 1 + (r() < .5 ? 1 : 0);
-      for (let k = 0; k < n; k++) g[s.y - 1][c + k] = 2;
+    const len = s.x1 - s.x0, mid = s.x0 > 10 && s.x1 < cols - 16;
+    if (st !== 'sky' && len >= 6 && mid && r() < .45 + wi * .04) { // Stacheln
+      const n = 1 + (r() < .5 ? 1 : 0) + (wi >= 3 && r() < .4 ? 1 : 0), c = s.x0 + 2 + Math.floor(r() * Math.max(1, len - 3 - n));
+      for (let k = 0; k < n && c + k < s.x1 - 1; k++) g[s.y - 1][c + k] = 2;
     }
-    if (st !== 'sky' && len >= 6 && r() < .5) {
+    if (st !== 'sky' && len >= 6 && s.y >= 6 && r() < .55) { // Mario-Reihe: Bloecke und ?-Bloecke, mit Kopf von unten anstossen
+      const pc = s.x0 + 1 + Math.floor(r() * Math.max(1, len - 5)), pl = 3 + Math.floor(r() * 3), cr = mods.includes('crumble');
+      for (let c = pc, i = 0; c < Math.min(pc + pl, s.x1); c++, i++) if (!g[s.y - 4][c]) g[s.y - 4][c] = i % 2 === 1 && r() < .75 ? 8 : cr && r() < .6 ? 5 : 3;
+      if (r() < .35 && s.y >= 9) for (let c = pc + 1; c < Math.min(pc + pl - 1, s.x1); c++) if (!g[s.y - 7][c]) g[s.y - 7][c] = 3; // zweite Ebene
+    } else if (st !== 'sky' && len >= 6 && r() < .4) {
       const pc = s.x0 + 1 + Math.floor(r() * (len - 5)), pl = 3 + Math.floor(r() * 2), ty = mods.includes('crumble') && r() < .7 ? 5 : 3;
-      for (let c = pc; c < Math.min(pc + pl, s.x1); c++) g[s.y - 3][c] = ty;
+      for (let c = pc; c < Math.min(pc + pl, s.x1); c++) if (!g[s.y - 3][c]) g[s.y - 3][c] = ty;
+    }
+    if ((st === 'plain' || st === 'hills' || st === 'cave') && len >= 7 && mid && r() < .3) { // Roehre als Hindernis
+      const ph = 2 + (wi >= 2 && r() < .5 ? 1 : 0), c = s.x0 + 2 + Math.floor(r() * (len - 5));
+      let free = true; for (let y = s.y - ph; y < s.y; y++) for (const cc of [c, c + 1]) if (g[y][cc]) free = false;
+      if (free) for (let y = s.y - ph; y < s.y; y++) g[y][c] = g[y][c + 1] = 6;
     }
   }
   for (const gp of gaps) gp.yl = spots[gp.si].y, gp.yr = spots[gp.si + 1].y;
@@ -111,17 +125,6 @@ function genLevel(wi, li, seed) {
     for (let c = 1; c < cols; c++) if (!g[colH[c]][c] && !g[colH[c - 1]][c]) colH[c] = colH[c - 1];
     for (let c = 0; c < cols; c++) { const ce = colH[c] - 8 - Math.round(Math.abs(Math.sin(c * .3)) * 2); for (let y = 0; y <= ce; y++) if (!g[y][c]) g[y][c] = 1; }
   }
-  const springs = [], movers = [], fire = [];
-  const roomy = spots.filter(s => s.x1 - s.x0 >= 5 && s.x0 > 8 && s.x1 < cols - 12);
-  if (mods.includes('springs')) for (let k = 0; k < 5 && roomy.length; k++) {
-    const s = pick(roomy), col = s.x0 + 2 + Math.floor(r() * (s.x1 - s.x0 - 3));
-    if (!g[s.y - 1][col]) springs.push({ x: col * TS + 2, y: s.y * TS - 10, w: 28, h: 10, sq: 0 });
-  }
-  if (mods.includes('movers') || st === 'sky') {
-    for (const gp of gaps) if (st === 'sky' || r() < .6) { const w = (gp.x1 - gp.x0) * TS; movers.push({ cx: gp.x0 * TS + w / 2, y0: gp.yl * TS, ax: w / 2 + 10, ay: 0, w: 64, h: 12, sp: 1.3 + r() * .6, ph: r() * 6, x: 0, y: 0, dx: 0, dy: 0 }); }
-    if (mods.includes('movers')) for (let k = 0; k < 3 && roomy.length; k++) { const s = pick(roomy); movers.push({ cx: (s.x0 + s.x1) / 2 * TS, y0: (s.y - 4) * TS, ax: 0, ay: 56, w: 80, h: 12, sp: 1.2 + r() * .5, ph: r() * 6, x: 0, y: 0, dx: 0, dy: 0 }); }
-  }
-  if (mods.includes('fireballs')) for (const gp of gaps) if (r() < .85) fire.push({ x: (gp.x0 + gp.x1) / 2 * TS, ph: r() * 3, per: 2.4 + r() * 1.2, hh: 170 + r() * 60 });
   // Raetsel: Ein Schlosstor sperrt den Weg, der Schluessel liegt auf einer Plattform weiter vorn
   let gate = null, keyPos = null;
   if (li >= 2 && st !== 'sky' && st !== 'cave' && cols >= 90 && r() < .5) {
@@ -136,6 +139,21 @@ function genLevel(wi, li, seed) {
       gate = { tx: gx, y1: gs.y, open: false }; keyPos = { x: (kx + 1) * TS + 16, y: (ks.y - 3) * TS - 24 };
     }
   }
+  const springs = [], movers = [], fire = [];
+  const roomy = spots.filter(s => s.x1 - s.x0 >= 5 && s.x0 > 8 && s.x1 < cols - 12);
+  if (mods.includes('springs')) for (let k = 0; k < 5 && roomy.length; k++) {
+    const s = pick(roomy), col = s.x0 + 2 + Math.floor(r() * (s.x1 - s.x0 - 3));
+    if (!g[s.y - 1][col]) springs.push({ x: col * TS + 2, y: s.y * TS - 10, w: 28, h: 10, sq: 0 });
+  }
+  if (mods.includes('movers') || st === 'sky') {
+    for (const gp of gaps) if ((st === 'sky' || r() < .6) && g[gp.yl][gp.x0] !== 5) { const w = (gp.x1 - gp.x0) * TS, mw = 64; movers.push({ cx: gp.x0 * TS + w / 2, y0: gp.yl * TS, ax: Math.max(0, (w - mw) / 2 - 4), ay: 0, w: mw, h: 12, sp: 1.3 + r() * .6, ph: r() * 6, x: 0, y: 0, dx: 0, dy: 0 }); }
+    if (mods.includes('movers')) for (let k = 0, tries = 0; k < 3 && roomy.length && tries < 12; tries++) {
+      const s = pick(roomy), cc = Math.floor((s.x0 + s.x1) / 2); let free = s.y >= 7;
+      for (let y = s.y - 6; y <= s.y - 2 && free; y++) for (let c = cc - 2; c <= cc + 1; c++) if (y < 0 || g[y][c]) { free = false; break; }
+      if (free) { movers.push({ cx: (cc + .5) * TS, y0: (s.y - 4) * TS, ax: 0, ay: 40, w: 80, h: 12, sp: 1.2 + r() * .5, ph: r() * 6, x: 0, y: 0, dx: 0, dy: 0 }); k++; }
+    }
+  }
+  if (mods.includes('fireballs')) for (const gp of gaps) if (r() < .85) fire.push({ x: (gp.x0 + gp.x1) / 2 * TS, ph: r() * 3, per: 2.4 + r() * 1.2, hh: 170 + r() * 60 });
   // Checkpoint-Laternen etwa alle 45 Spalten auf ebenem Boden
   const cps = [];
   for (let x2 = 38; x2 < cols - 22; x2 += 42 + Math.floor(r() * 8)) {
@@ -144,6 +162,7 @@ function genLevel(wi, li, seed) {
     if (g[s2.y - 1][cx] || g[s2.y - 1][cx + 1] || cps.some(c => Math.abs(c.tx - cx) < 22)) continue;
     cps.push({ tx: cx, x: cx * TS + 16, y: s2.y * TS, on: false });
   }
+  { const L = spots[spots.length - 1], ys = L.y; if (L.x0 <= cols - 13 && st !== 'sky') for (let i = 0; i < 4; i++) for (let k = 1; k <= i + 1; k++) if (ys - k >= 0 && !g[ys - k][cols - 12 + i]) g[ys - k][cols - 12 + i] = 9; }
   return { g, cols, spots, gaps, sp, springs, movers, fire, doors, cps, gate, keyPos, moonPos: moon, flagX: (cols - 5) * TS, flagY: spots[spots.length - 1].y * TS };
 }
 
@@ -191,6 +210,7 @@ class Run {
     opts = opts || {};
     this.wi = wi; this.li = li; this.S = S; this.end = end; this.Wd = W[wi];
     Object.assign(this, opts.custom ? customLevel(opts.custom) : genLevel(wi, li, opts.seed));
+    this.pw = typeof lvl === 'function' ? lvl() - 1 : 0; this.qbUsed = []; // Spielerstaerke (Skillraenge) fuer die Schwierigkeit
     this.ice = this.sp.mods.includes('ice'); this.lowg = this.sp.mods.includes('lowgrav'); this.wx = this.sp.weather; this.wind = this.sp.wind || (this.wx === 'sand' ? (this.sp.ph > 3 ? 1 : -1) * 55 : 0); this.hits = 0; this.maxCombo = 0; this.keyN = 0; this.gateHint = -9;
     this.rec = []; this.recT = 0; this.kills = {}; this.race = !!opts.race; this.ghost = this.race ? loadGhost(wi, li) : null; this.par = this.cols * TS / 150;
     this.t = 0; this.animT = 0; this.pan = 2.8; this.time = 45 + this.cols * .35 + S.time;
@@ -198,7 +218,7 @@ class Run {
     this.boost = { hp: 0, dmg: 0, spd: 0, jmp: 0 };
     const s0 = this.spots[0];
     this.chars = (opts.chars && opts.chars.length ? opts.chars : ['luna']).slice(0, 2);
-    this.players = this.chars.map((id, i) => { const x = TS * (2 + i * 1.3), y = s0.y * TS - 30; return { id, idx: i, I: opts.net === 'guest' ? (i ? IN : { l: 0, r: 0, j: 0, jb: 0, ap: 0, dash: 0, use: 0 }) : i ? (opts.net === 'host' ? NETIN : IN2) : IN, S: charStats(S, id), x, y, w: 22, h: 30, vx: 0, vy: 0, on: false, coy: 0, face: 1, hp: S.maxhp, inv: 0, cd: 0, swing: 0, sid: 0, jumps: 0, sh: S.shield, dashT: 0, dcd: 0, wjT: 0, wall: 0, ko: false, koT: 0, safe: { x, y } }; });
+    this.players = this.chars.map((id, i) => { const x = TS * (2 + i * 1.3), y = s0.y * TS - 30, cs = charStats(S, id); return { id, idx: i, I: opts.net === 'guest' ? (i ? IN : { l: 0, r: 0, j: 0, jb: 0, ap: 0, dash: 0, use: 0 }) : i ? (opts.net === 'host' ? NETIN : IN2) : IN, S: cs, x, y, w: 22, h: 30, vx: 0, vy: 0, on: false, coy: 0, face: 1, hp: cs.maxhp, inv: 0, cd: 0, swing: 0, sid: 0, jumps: 0, sh: S.shield, dashT: 0, dcd: 0, wjT: 0, wall: 0, ko: false, koT: 0, safe: { x, y } }; });
     this.p = this.players[0]; this.coop = this.players.length > 1;
     this.net = opts.net; this.guest = opts.net === 'guest'; this.me = 1; if (opts.net) { this.pan = 0; this.doors = []; } // Online: kein Vorspann, keine Geheimraeume
     this.ent = []; this.shots = []; this.fx = []; this.pick = []; this.drops = []; this.cr = []; this.warn = []; this.rocks = [];
@@ -229,16 +249,16 @@ class Run {
 
   spawn() {
     const { Wd, wi, li } = this, ok = this.spots.filter(s => s.x0 > 11 && s.x1 - s.x0 >= 4 && s.x1 < this.cols - 8);
-    const n = Math.floor(5 + li * .8 + wi * 1.2);
+    const n = Math.floor(6 + li * 1 + wi * 1.5 + this.pw / 6);
     for (let k = 0; k < n && ok.length; k++) {
       const s = pick(ok), t = pick(Wd.enemies), x = (s.x0 + 1 + Math.random() * (s.x1 - s.x0 - 2)) * TS;
       const fly = t.b === 'fly', h = fly ? 24 : 26, y = fly ? (s.y - 3 - Math.random() * 2) * TS : s.y * TS - h;
-      this.ent.push({ t, x, y, y0: y, x0: x, w: 24, h, vx: 0, vy: 0, d: Math.random() < .5 ? -1 : 1,
-        hp: Math.ceil(t.hp * (1 + wi * .35 + li * .03) * (1 + .6 * (save.ng || 0))), on: false, hop: Math.random() * 1.5, ph: Math.random() * 6, fl: 0, sid: -1, s: t.s });
+      if (!fly && [2, 12, 22].some(dx => this.solidAt(x + dx, y + 4) || this.solidAt(x + dx, y + h - 4))) continue;
+      this.ent.push(this.mkEnemy(t, x, y));
     }
     for (let gi = 0, ng = li >= 2 ? 1 + Math.floor(li / 5) : 0; gi < ng && ok.length; gi++) {
       const s = pick(ok), bx = (s.x0 + 1 + Math.random() * Math.max(1, s.x1 - s.x0 - 3)) * TS;
-      for (let i = 0, n = 3 + (li >= 6 ? 1 : 0); i < n; i++) this.ent.push(this.mkSwarm(bx + i * 18, s.y * TS - 16));
+      for (let i = 0, n = 3 + (li >= 6 ? 1 : 0); i < n; i++) if (!this.solidAt(bx + i * 18 + 1, s.y * TS - 12) && !this.solidAt(bx + i * 18 + 15, s.y * TS - 12)) this.ent.push(this.mkSwarm(bx + i * 18, s.y * TS - 16));
     }
     for (let k = 0; k < 14; k++) {
       const s = pick(this.spots), n2 = rint(3, 4), bx = (s.x0 + 1 + Math.random() * Math.max(1, s.x1 - s.x0 - 4)) * TS;
@@ -254,9 +274,15 @@ class Run {
     if (this.li === 4 && !(save.bells || {})[this.wi] && ok.length) { const s = pick(ok); this.pick.push({ k: 'b', x: (s.x0 + s.x1) / 2 * TS, y: s.y * TS - 20 }); }
     const cs = this.spots.filter(s => s.x0 > 8 && s.x1 - s.x0 >= 5);
     if (cs.length && Math.random() < .5) { const s = pick(cs); this.pick.push({ k: 'c', x: (s.x0 + 2 + Math.random() * (s.x1 - s.x0 - 3)) * TS, y: s.y * TS - 16 }); }
+    // Gegner auf Block-Reihen (wie Mario-Plattformen)
+    const runs = []; for (let y = 2; y < ROWS - 1; y++) for (let c = 12, s0 = -1; c < this.cols - 8; c++) { const v = this.g[y][c], top = (v === 3 || v === 8 || v === 9) && !this.g[y - 1][c]; if (top && s0 < 0) s0 = c; if ((!top || c === this.cols - 9) && s0 >= 0) { if (c - s0 >= 3) runs.push({ y, x0: s0, x1: c }); s0 = -1; } }
+    for (let k = 0; k < Math.min(runs.length, 1 + Math.floor(wi / 2) + Math.floor(this.pw / 10)); k++) { const rr = pick(runs), t = pick(Wd.enemies.filter(e => e.b !== 'fly')); const ex = (rr.x0 + .5 + Math.random() * (rr.x1 - rr.x0 - 1.5)) * TS, ey = rr.y * TS - 26; if (t && ![2, 12, 22].some(dx => this.solidAt(ex + dx, ey + 4))) this.ent.push(this.mkEnemy(t, ex, ey)); }
+    // Sammelsachen nie in Bloecken: nach oben schieben oder weglassen
+    this.pick = this.pick.filter(k => { for (let i = 0; i < 5; i++) { if (!this.solidAt(k.x, k.y) && !this.solidAt(k.x, k.y + 10) && !this.solidAt(k.x, k.y - 10)) return true; k.y -= TS; } return false; });
   }
 
-  solid(tx, ty) { if (tx < 0 || tx >= this.cols) return true; if (ty < 0 || ty >= ROWS) return false; const v = this.g[ty][tx]; return v === 1 || v === 3 || v === 5 || v === 6 || v === 7; }
+  solidAt(px, py) { return this.solid(Math.floor(px / TS), Math.floor(py / TS)); }
+  solid(tx, ty) { if (tx < 0 || tx >= this.cols) return true; if (ty < 0 || ty >= ROWS) return false; const v = this.g[ty][tx]; return v === 1 || v === 3 || v === 5 || v === 6 || v === 7 || v === 8 || v === 9; }
 
   collide(e, dt) {
     e.hitX = false; e.x += e.vx * dt;
@@ -304,7 +330,7 @@ class Run {
 
   mkEnemy(t, x, y) {
     const fly = t.b === 'fly', h = fly ? 24 : 26, wi = this.wi, li = this.li;
-    return { t, x, y, y0: y, x0: x, w: 24, h, vx: 0, vy: 0, d: Math.random() < .5 ? -1 : 1, hp: Math.ceil(t.hp * (1 + wi * .35 + li * .03) * (1 + .6 * (save.ng || 0))), on: false, hop: Math.random() * 1.5, ph: Math.random() * 6, fl: 0, sid: -1, s: t.s };
+    return { t, x, y, y0: y, x0: x, w: 24, h, vx: 0, vy: 0, d: Math.random() < .5 ? -1 : 1, hp: Math.ceil(t.hp * (1 + wi * .35 + li * .03) * (1 + .6 * (save.ng || 0)) * (1 + this.pw * .035)), on: false, hop: Math.random() * 1.5, ph: Math.random() * 6, fl: 0, sid: -1, s: t.s * (1 + wi * .05) };
   }
   mkSwarm(x, y) {
     const t = { n: 'Schwarm', e: SWARM_E[this.wi], hp: 1, b: 'swarm', s: 100, sz: 20 };
@@ -422,7 +448,7 @@ class Run {
         if (q.ko || !ov(q, e)) continue; this.p = q;
         if (e.t.x === 'spiky' && q.vy > 100 && q.y + q.h - e.y < 18) { this.hurt(1, 'Stachelpanzer'); q.vy = -430; }
         else if (q.vy > 100 && q.y + q.h - e.y < 18) { q.vy = -430; q.jumps = 0; this.hit(e, this.dmgOut()); }
-        else this.hurt(1 + (this.wi >= 3 ? 1 : 0) + Math.min(2, save.ng || 0), e.t.n);
+        else this.hurt(1 + (this.wi >= 3 ? 1 : 0) + Math.min(2, save.ng || 0) + (this.pw >= 20 ? 1 : 0), e.t.n);
         if (this.done || !this.ent.includes(e)) break;
       }
     }
@@ -520,6 +546,7 @@ class Run {
     }
     if (!I.j && p.vy < -200) p.vy += 2600 * dt;
     const vy0 = p.vy; this.collide(p, dt);
+    if (vy0 < 0 && p.vy === 0 && !this.guest) this.bump(p);
     for (const m of this.movers) {
       if (p.vy >= 0 && p.x + p.w > m.x && p.x < m.x + m.w && Math.abs(p.y + p.h - m.y) <= 10 + Math.abs(m.dy)) { p.y = m.y - p.h; p.vy = 0; p.on = true; p.x += m.dx; }
     }
@@ -549,6 +576,17 @@ class Run {
     }
   }
 
+  bump(p) {
+    const ty = Math.floor((p.y - 2) / TS); if (ty < 0) return;
+    for (const tx of new Set([Math.floor((p.x + 3) / TS), Math.floor((p.x + p.w - 3) / TS)])) {
+      if (!this.g[ty] || this.g[ty][tx] !== 8) continue;
+      this.g[ty][tx] = 9; this.g._ch = []; this.qbUsed.push(tx + ',' + ty); const cx = tx * TS + 16, cy = ty * TS - 10;
+      if (Math.random() < .15) { this.drops.push({ x: cx, y: cy - 10, d: pick(DROPS) }); this.say('Ein Item!'); snd('power'); }
+      else { this.coins++; snd('coin'); this.float(cx - 10, cy - 6, '+1 🪙', '#ffd54a'); }
+      this.spark(cx, cy + 6, 8, '#ffe06a');
+    }
+  }
+
   cpAt(c) {
     c.on = true; this.cpX = c.x; this.cpY = c.y; this.cpTime = this.time; snd('bell'); this.say('🏮 Checkpoint!'); this.spark(c.x, c.y - 40, 16, '#ffd54a');
     for (const q of this.players) {
@@ -566,6 +604,14 @@ class Run {
   drawTile(c, v, tx, ty, st) {
     const sp = this.sp, wi = this.wi, x = tx * TS, y = ty * TS, h = hash(tx * 73856093 ^ ty * 19349663), pl = PLAT[wi];
     if (v === 2) { c.fillStyle = wi === 3 ? '#9fd8ff' : wi === 5 ? '#ff7a2a' : wi === 6 ? '#ffd24a' : '#ccd'; for (let k = 0; k < 2; k++) { c.beginPath(); c.moveTo(x + k * 16, y + TS); c.lineTo(x + k * 16 + 8, y + TS / 2); c.lineTo(x + k * 16 + 16, y + TS); c.fill(); } return; }
+    if (v === 8 || v === 9) {
+      const q = v === 8, gg = c.createLinearGradient(0, y, 0, y + TS); gg.addColorStop(0, q ? '#ffe27a' : '#b08458'); gg.addColorStop(1, q ? '#e8a020' : '#7a5434');
+      c.beginPath(); c.roundRect(x + 1, y + 1, TS - 2, TS - 2, 5); c.fillStyle = gg; c.fill(); c.strokeStyle = q ? '#8a5a00' : '#4a3018'; c.lineWidth = 2; c.stroke();
+      c.fillStyle = q ? 'rgba(255,255,255,.45)' : 'rgba(255,255,255,.15)'; c.fillRect(x + 5, y + 4, TS - 10, 3);
+      c.fillStyle = q ? '#8a5a00' : '#4a3018'; for (const [a, b] of [[5, 5], [TS - 7, 5], [5, TS - 7], [TS - 7, TS - 7]]) c.fillRect(x + a, y + b, 2, 2);
+      if (q) { c.font = 'bold 20px "Trebuchet MS",sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.lineWidth = 3; c.strokeStyle = '#8a5a00'; c.strokeText('?', x + TS / 2, y + TS / 2 + 1); c.fillStyle = '#fff6d0'; c.fillText('?', x + TS / 2, y + TS / 2 + 1); }
+      return;
+    }
     if (v === 7) {
       const gg = c.createLinearGradient(x, 0, x + TS, 0); gg.addColorStop(0, '#6a5a2a'); gg.addColorStop(.5, '#d8b84a'); gg.addColorStop(1, '#5a4a1e');
       c.fillStyle = gg; c.fillRect(x + 6, y, TS - 12, TS); c.fillStyle = 'rgba(0,0,0,.25)'; c.fillRect(x + TS / 2 - 1, y, 2, TS); c.fillStyle = '#fff3b0'; c.fillRect(x + 8, y, 3, TS);
