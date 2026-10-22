@@ -1,14 +1,37 @@
 // Weltkarte im Super-Mario-World-Stil: Landmasse, Strasse, Levelpunkte, Festungen, Laeden, laufende Katze.
 const MW = 960, MH = 544, K = 1.5;
 const MAPTH = [
-  { sea: '#4aa8e0', land: '#8ed36b', edge: '#4f9a44', road: '#f3e0a8', patch: '#7bc65b', deco: ['🌳', '🌳', '🌷', '🍄', '🌼', '🌳'] },
-  { sea: '#2a8aa8', land: '#4fb861', edge: '#2b8441', road: '#e2cf96', patch: '#3da352', deco: ['🌴', '🌴', '🌺', '🦜', '🌿', '🌴'] },
-  { sea: '#6fc4e0', land: '#f1d28a', edge: '#c29a4c', road: '#fff2cf', patch: '#e8c273', deco: ['🌵', '🌵', '🐪', '🏜️', '🪨', '🌵'] },
-  { sea: '#5fa4de', land: '#f2f8ff', edge: '#9fc0dc', road: '#cfe6fa', patch: '#d7e8f6', deco: ['🌲', '⛄', '🌲', '🧊', '❄️', '🌲'] },
-  { sea: '#7587b0', land: '#b3b8c9', edge: '#767c94', road: '#ece4d2', patch: '#a2a8bd', deco: ['⛰️', '🏔️', '🪨', '🌲', '⛰️', '🏔️'] },
-  { sea: '#e8541c', land: '#5b4040', edge: '#2b1616', road: '#f7b873', patch: '#6d4a4a', deco: ['🌋', '🔥', '🪨', '💀', '🔥', '🌋'] },
-  { sea: '#8ec8ff', land: '#fafcff', edge: '#b8cdf0', road: '#ffe9b0', patch: '#e8f0ff', deco: ['☁️', '🌈', '⭐', '🪁', '🕊️', '☁️'] },
+  { sea: '#4aa8e0', land: '#8ed36b', edge: '#4f9a44', road: '#f3e0a8', patch: '#7bc65b', beach: '#f2e0a4', deco: ['tree', 'tree', 'bush', 'flower', 'mushroom', 'pine'] },
+  { sea: '#2a8aa8', land: '#4fb861', edge: '#2b8441', road: '#e2cf96', patch: '#3da352', beach: '#e8d69a', deco: ['palm', 'palm', 'jtree', 'bush', 'flower', 'palm'] },
+  { sea: '#6fc4e0', land: '#f1d28a', edge: '#c29a4c', road: '#fff2cf', patch: '#e8c273', beach: '#fbe9b8', deco: ['cactus', 'cactus', 'rock', 'dgrass', 'rock', 'cactus'] },
+  { sea: '#5fa4de', land: '#f2f8ff', edge: '#9fc0dc', road: '#cfe6fa', patch: '#d7e8f6', beach: '#dff3ff', deco: ['spine', 'spine', 'ice', 'srock', 'spine', 'ice'] },
+  { sea: '#7587b0', land: '#b3b8c9', edge: '#767c94', road: '#ece4d2', patch: '#a2a8bd', beach: '#cfd2dc', deco: ['mount', 'mount', 'rock', 'pine', 'rock', 'mount'] },
+  { sea: '#e8541c', land: '#5b4040', edge: '#2b1616', road: '#f7b873', patch: '#6d4a4a', beach: '#3a2a2a', deco: ['volcano', 'rock', 'lava', 'dead', 'rock', 'volcano'] },
+  { sea: '#8ec8ff', land: '#fafcff', edge: '#b8cdf0', road: '#ffe9b0', patch: '#e8f0ff', beach: '#ffffff', deco: ['cloud', 'cloud', 'star', 'ptree', 'cloud', 'star'] },
 ];
+// Gezeichnete Karten-Deko (schattiert, kein Emoji). Ursprung = Fusspunkt, s = Groesse.
+function mdeco(c, k, x, y, s, rv) {
+  const ball = (bx, by, r, col) => { const g = c.createRadialGradient(bx - r * .35, by - r * .4, r * .1, bx, by, r * 1.1); g.addColorStop(0, shade(col, .3)); g.addColorStop(1, shade(col, -.3)); c.fillStyle = g; c.beginPath(); c.arc(bx, by, r, 0, 7); c.fill(); };
+  const tri = (pts, col) => { c.fillStyle = col; c.beginPath(); pts.forEach((p, i) => i ? c.lineTo(p[0], p[1]) : c.moveTo(p[0], p[1])); c.closePath(); c.fill(); };
+  c.fillStyle = 'rgba(0,0,0,.18)'; c.beginPath(); c.ellipse(x, y + 1, s * .42, s * .13, 0, 0, 7); c.fill();
+  const green = ['#4caf50', '#3f9a44', '#5dbb4a'][Math.floor(rv * 3)];
+  if (k === 'tree' || k === 'ptree') { c.fillStyle = '#7a4e2a'; c.fillRect(x - s * .06, y - s * .45, s * .12, s * .45); const col = k === 'ptree' ? ['#ffb8d8', '#b8d8ff', '#d8c0ff'][Math.floor(rv * 3)] : green; ball(x - s * .18, y - s * .55, s * .24, col); ball(x + s * .18, y - s * .55, s * .24, col); ball(x, y - s * .78, s * .28, col); }
+  else if (k === 'pine' || k === 'spine') { c.fillStyle = '#6a4424'; c.fillRect(x - s * .05, y - s * .2, s * .1, s * .2); const col = k === 'spine' ? '#3a7a5a' : '#2f8a4a'; for (let i = 0; i < 3; i++) { const w = s * (.42 - i * .1), yy = y - s * (.15 + i * .25); tri([[x - w, yy], [x + w, yy], [x, yy - s * .38]], shade(col, i * .08)); tri([[x, yy - s * .38], [x + w, yy], [x + w * .2, yy]], 'rgba(0,0,0,.15)'); if (k === 'spine') tri([[x - w * .5, yy - s * .19], [x + w * .5, yy - s * .19], [x, yy - s * .38]], '#f4faff'); } }
+  else if (k === 'bush' || k === 'dgrass') { const col = k === 'dgrass' ? '#c8b060' : green; ball(x - s * .16, y - s * .14, s * .16, col); ball(x + s * .16, y - s * .14, s * .16, col); ball(x, y - s * .24, s * .2, col); }
+  else if (k === 'flower') { const cols = ['#ff6a8a', '#ffd23a', '#ffffff', '#b88aff']; for (let i = 0; i < 5; i++) { const fx = x + Math.cos(i * 2.4) * s * .25, fy = y - s * .08 + Math.sin(i * 2.4) * s * .1; c.strokeStyle = '#3f8a3a'; c.lineWidth = 1.2; c.beginPath(); c.moveTo(fx, fy + 4); c.lineTo(fx, fy); c.stroke(); c.fillStyle = cols[i % 4]; c.beginPath(); c.arc(fx, fy, s * .07, 0, 7); c.fill(); } }
+  else if (k === 'mushroom') { c.fillStyle = '#f4ead8'; c.fillRect(x - s * .08, y - s * .3, s * .16, s * .3); ball(x, y - s * .32, s * .26, '#e8453c'); c.fillStyle = '#fff'; for (const [dx, dy] of [[-.1, -.4], [.1, -.36], [0, -.48]]) { c.beginPath(); c.arc(x + dx * s, y + dy * s, s * .045, 0, 7); c.fill(); } }
+  else if (k === 'palm') { c.strokeStyle = '#8a6030'; c.lineWidth = s * .09; c.lineCap = 'round'; c.beginPath(); c.moveTo(x, y); c.quadraticCurveTo(x + s * .18, y - s * .5, x + s * .06, y - s * .9); c.stroke(); for (let i = 0; i < 5; i++) { const a = -2.6 + i * .55; c.strokeStyle = shade('#3fae4a', i % 2 ? -.15 : .1); c.lineWidth = s * .09; c.beginPath(); c.moveTo(x + s * .06, y - s * .9); c.quadraticCurveTo(x + s * .06 + Math.cos(a) * s * .3, y - s * .9 + Math.sin(a) * s * .3 - s * .1, x + s * .06 + Math.cos(a) * s * .5, y - s * .9 + Math.sin(a) * s * .5 + s * .12); c.stroke(); } ball(x + s * .06, y - s * .86, s * .07, '#7a4e2a'); }
+  else if (k === 'jtree') { c.fillStyle = '#5a3a20'; c.fillRect(x - s * .07, y - s * .5, s * .14, s * .5); ball(x, y - s * .7, s * .36, '#2e7a3a'); ball(x - s * .22, y - s * .58, s * .22, '#3a8a44'); ball(x + s * .22, y - s * .6, s * .22, '#256a30'); }
+  else if (k === 'cactus') { const col = '#4caa5a'; c.fillStyle = col; c.beginPath(); c.roundRect(x - s * .1, y - s * .8, s * .2, s * .8, s * .1); c.fill(); c.beginPath(); c.roundRect(x - s * .34, y - s * .55, s * .14, s * .28, s * .07); c.fill(); c.beginPath(); c.roundRect(x + s * .2, y - s * .62, s * .14, s * .3, s * .07); c.fill(); c.fillRect(x - s * .26, y - s * .32, s * .2, s * .1); c.fillRect(x + s * .06, y - s * .38, s * .2, s * .1); c.fillStyle = 'rgba(255,255,255,.25)'; c.fillRect(x - s * .05, y - s * .74, s * .04, s * .6); }
+  else if (k === 'rock' || k === 'srock') { const col = k === 'srock' ? '#9aa8b8' : '#8a8a96'; tri([[x - s * .34, y], [x - s * .24, y - s * .3], [x + s * .02, y - s * .42], [x + s * .3, y - s * .26], [x + s * .36, y]], col); tri([[x + s * .02, y - s * .42], [x + s * .3, y - s * .26], [x + s * .36, y], [x + s * .04, y]], 'rgba(0,0,0,.2)'); if (k === 'srock') tri([[x - s * .24, y - s * .3], [x + s * .02, y - s * .42], [x + s * .3, y - s * .26], [x + s * .04, y - s * .3]], '#f4faff'); }
+  else if (k === 'ice') { for (const [dx, h, w] of [[-.14, .5, .1], [.04, .72, .12], [.2, .42, .09]]) { tri([[x + dx * s - w * s, y], [x + dx * s, y - h * s], [x + dx * s + w * s, y]], '#bfeaff'); tri([[x + dx * s, y - h * s], [x + dx * s + w * s, y], [x + dx * s, y]], '#7ac8f0'); } }
+  else if (k === 'mount') { tri([[x - s * .55, y], [x, y - s * .85], [x + s * .55, y]], '#8a90a8'); tri([[x, y - s * .85], [x + s * .55, y], [x + s * .05, y]], 'rgba(0,0,0,.2)'); tri([[x - s * .17, y - s * .58], [x, y - s * .85], [x + s * .17, y - s * .58], [x + s * .06, y - s * .64], [x - s * .05, y - s * .6]], '#f4f8ff'); }
+  else if (k === 'volcano') { tri([[x - s * .5, y], [x - s * .12, y - s * .6], [x + s * .12, y - s * .6], [x + s * .5, y]], '#4a2a24'); tri([[x + s * .12, y - s * .6], [x + s * .5, y], [x + s * .1, y]], 'rgba(0,0,0,.25)'); c.fillStyle = '#ff8a2a'; c.beginPath(); c.ellipse(x, y - s * .6, s * .12, s * .04, 0, 0, 7); c.fill(); c.strokeStyle = '#ff6a1a'; c.lineWidth = s * .05; c.beginPath(); c.moveTo(x - s * .04, y - s * .6); c.quadraticCurveTo(x - s * .1, y - s * .4, x - s * .18, y - s * .2); c.stroke(); c.fillStyle = 'rgba(80,70,70,.5)'; c.beginPath(); c.arc(x + s * .04, y - s * .8, s * .1, 0, 7); c.arc(x + s * .12, y - s * .95, s * .13, 0, 7); c.fill(); }
+  else if (k === 'lava') { c.fillStyle = '#2a1414'; c.beginPath(); c.ellipse(x, y - s * .08, s * .42, s * .16, 0, 0, 7); c.fill(); const g = c.createRadialGradient(x, y - s * .08, 2, x, y - s * .08, s * .36); g.addColorStop(0, '#ffe06a'); g.addColorStop(1, '#ff4a1a'); c.fillStyle = g; c.beginPath(); c.ellipse(x, y - s * .08, s * .34, s * .11, 0, 0, 7); c.fill(); }
+  else if (k === 'dead') { c.strokeStyle = '#3a2a24'; c.lineCap = 'round'; c.lineWidth = s * .08; c.beginPath(); c.moveTo(x, y); c.lineTo(x, y - s * .6); c.moveTo(x, y - s * .35); c.lineTo(x - s * .22, y - s * .55); c.moveTo(x, y - s * .45); c.lineTo(x + s * .2, y - s * .7); c.stroke(); }
+  else if (k === 'cloud') { c.fillStyle = 'rgba(160,190,230,.35)'; c.beginPath(); c.ellipse(x, y - s * .05, s * .45, s * .1, 0, 0, 7); c.fill(); ball(x - s * .2, y - s * .22, s * .18, '#ffffff'); ball(x + s * .18, y - s * .22, s * .17, '#ffffff'); ball(x, y - s * .33, s * .23, '#ffffff'); }
+  else if (k === 'star') { c.save(); c.translate(x, y - s * .35); c.rotate(rv); c.fillStyle = '#ffe066'; c.beginPath(); for (let i = 0; i < 10; i++) { const a = i * Math.PI / 5, rr = i % 2 ? s * .12 : s * .28; c.lineTo(Math.sin(a) * rr, -Math.cos(a) * rr); } c.closePath(); c.fill(); c.strokeStyle = '#c89a00'; c.lineWidth = 1.2; c.stroke(); c.restore(); }
+}
 const mp = document.getElementById('mp'), mx = mp.getContext('2d');
 mp.width = MW * K; mp.height = MH * K;
 let MV = null, mapTok = 0;
@@ -50,10 +73,17 @@ function renderBG(wi, L) {
   }
   land.closePath();
   c.save(); c.lineJoin = 'round'; c.strokeStyle = 'rgba(255,255,255,.14)'; c.lineWidth = 54; c.stroke(land); c.strokeStyle = 'rgba(255,255,255,.2)'; c.lineWidth = 30; c.stroke(land); c.restore();
-  c.fillStyle = T.edge; c.save(); c.translate(0, 10); c.fill(land); c.restore();
+  // Klippe: Land nach unten versetzt mit Gesteinsschichten
+  c.save(); c.translate(0, 16); const cg = c.createLinearGradient(0, 0, 0, MH); cg.addColorStop(0, shade(T.edge, -.05)); cg.addColorStop(1, shade(T.edge, -.35)); c.fillStyle = cg; c.fill(land);
+  c.clip(land); c.strokeStyle = 'rgba(0,0,0,.18)'; c.lineWidth = 2; for (let yy = 0; yy < MH; yy += 7) { c.beginPath(); c.moveTo(0, yy); c.lineTo(MW, yy + 3); c.stroke(); } c.restore();
+  // Strand / Uferband
+  c.save(); c.lineJoin = 'round'; c.strokeStyle = T.beach; c.lineWidth = 22; c.stroke(land); c.restore();
   { const lg = c.createLinearGradient(0, 40, 0, MH); lg.addColorStop(0, shade(T.land, .16)); lg.addColorStop(1, shade(T.land, -.08)); c.fillStyle = lg; c.fill(land); }
   c.save(); c.clip(land); c.fillStyle = T.patch; c.globalAlpha = .55;
   for (let i = 0; i < 28; i++) { c.beginPath(); c.arc(r() * MW, r() * MH, 20 + r() * 55, 0, 7); c.fill(); }
+  // feine Struktur: Grasbueschel bzw. Koernung
+  for (let i = 0; i < 900; i++) { const gx = r() * MW, gy = r() * MH, v = r(); c.globalAlpha = .18 + v * .2; c.strokeStyle = v < .5 ? shade(T.land, -.25) : shade(T.land, .3); c.lineWidth = 1.2; c.beginPath(); if (wi < 2) { c.moveTo(gx, gy); c.lineTo(gx - 2, gy - 5); c.moveTo(gx, gy); c.lineTo(gx + 2, gy - 5); } else { c.moveTo(gx, gy); c.lineTo(gx + 2, gy); } c.stroke(); }
+  c.globalAlpha = .55;
   c.strokeStyle = 'rgba(255,255,255,.12)'; c.lineWidth = 30; c.stroke(land);
   // Akt-Regionen: weiche Farbfelder je Drittel der Welt
   const nact = i => i < L.M - 1 ? actOf(wi, L.N[i].t === 'lv' ? L.N[i].i : Math.floor(W[wi].n / 2)) : 2, cen = [0, 1, 2].map(a => { const q = L.P.filter((_, i) => nact(i) === a); return { x: q.reduce((s, p) => s + p.x, 0) / q.length, y: q.reduce((s, p) => s + p.y, 0) / q.length }; });
@@ -77,11 +107,13 @@ function renderBG(wi, L) {
     if (!mx.isPointInPath(land, x, y) || lakes.some(l => Math.hypot(l.x - x, (l.y - y) * 1.8) < l.rx + 22)) continue;
     if (segs.some(([a, b]) => segDist(x, y, a, b) < 34) || pts.some(p => Math.hypot(p.x - x, p.y - y) < 52)) continue;
     let nn = 0, nd = 1e9; L.P.forEach((p, i) => { const dd = Math.hypot(p.x - x, p.y - y); if (dd < nd) { nd = dd; nn = i; } });
-    dec.push({ x, y, e: T.deco[(Math.floor(r() * 3) + nact(nn) * 2) % T.deco.length], s: 20 + r() * 16 });
+    dec.push({ x, y, e: T.deco[(Math.floor(r() * 3) + nact(nn) * 2) % T.deco.length], s: 26 + r() * 18, rv: r() });
   }
   dec.sort((a, b) => a.y - b.y); c.textAlign = 'center'; c.textBaseline = 'middle';
   for (const lk of lakes) { const lg = c.createRadialGradient(lk.x - lk.rx * .3, lk.y - lk.ry * .4, 4, lk.x, lk.y, lk.rx); lg.addColorStop(0, shade(T.sea, .3)); lg.addColorStop(1, T.sea); c.fillStyle = 'rgba(0,0,0,.12)'; c.beginPath(); c.ellipse(lk.x, lk.y + 4, lk.rx + 4, lk.ry + 4, 0, 0, 7); c.fill(); c.fillStyle = lg; c.strokeStyle = 'rgba(255,255,255,.7)'; c.lineWidth = 3; c.beginPath(); c.ellipse(lk.x, lk.y, lk.rx, lk.ry, 0, 0, 7); c.fill(); c.stroke(); }
-  for (const d of dec) { c.fillStyle = 'rgba(0,0,0,.16)'; c.beginPath(); c.ellipse(d.x, d.y + d.s * .38, d.s * .42, d.s * .14, 0, 0, 7); c.fill(); c.fillStyle = '#000'; c.font = d.s + 'px "Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif'; c.fillText(d.e, d.x, d.y); }
+  for (const d of dec) { c.save(); mdeco(c, d.e, d.x, d.y + d.s * .3, d.s, d.rv); c.restore(); }
+  // Schilf am Seeufer
+  for (const lk of lakes) for (let i = 0; i < 6; i++) { const a = Math.PI * .1 + i * .5, rx = lk.x + Math.cos(a) * lk.rx * 1.02, ry = lk.y + Math.sin(a) * lk.ry * 1.02; c.strokeStyle = '#4a8a3a'; c.lineWidth = 1.6; c.beginPath(); c.moveTo(rx, ry); c.lineTo(rx - 1, ry - 9); c.stroke(); c.fillStyle = '#6a4a2a'; c.fillRect(rx - 2, ry - 12, 3, 5); }
 
   cn.crit = [];
   for (let i = 0; i < 300 && cn.crit.length < 5; i++) {
@@ -98,6 +130,7 @@ function renderBG(wi, L) {
   c.strokeStyle = T.road; road(L.P, 15); for (const s of L.shops) road([L.P[s.host], s], 9);
   c.strokeStyle = shade(T.road, .45); c.globalAlpha = .6; road(L.P, 4); c.globalAlpha = 1;
   c.setLineDash([2, 12]); c.strokeStyle = shade(T.road, -.2); road(L.P, 2); for (const s of L.shops) road([L.P[s.host], s], 2); c.setLineDash([]);
+  for (let k = 0; k < L.M - 1; k++) { const a = L.P[k], b = L.P[k + 1], n = Math.floor(Math.hypot(b.x - a.x, b.y - a.y) / 26), nx = -(b.y - a.y), ny = b.x - a.x, nl = Math.hypot(nx, ny) || 1; for (let i = 1; i < n; i++) { const u = i / n, sd = i % 2 ? 1 : -1, px = a.x + (b.x - a.x) * u + nx / nl * 13 * sd, py = a.y + (b.y - a.y) * u + ny / nl * 13 * sd; c.fillStyle = shade(T.edge, .2); c.beginPath(); c.ellipse(px, py, 2.6, 1.8, 0, 0, 7); c.fill(); } }
   return cn;
 }
 
